@@ -28,6 +28,28 @@ All notable changes to this project will be documented in this file.
     - Cheater vs Honorable.
     - Brawler vs Gunman.
 
+## [0.4.0] - 2025-11-22
+
+### Added
+- **Shootout Engine (`shootout_engine.py`)**:
+  - **Group Combat**: Support for team-based battles (Player Gang vs Sheriff/Outlaws).
+  - **Cover System**: Units can take cover to reduce hit chance.
+  - **Auto-Play**: AI can take over player turns for large battles.
+  - **Lethality**: Increased damage and critical hit chance in shootouts.
+- **Town Politics & Economy**:
+  - **Mayors**: Interact with town mayors to Bribe, Intimidate, or Kill them.
+  - **Elections**: High reputation players can run for Mayor.
+  - **Banking System**: Loot Bank Drafts from NPCs and attempt to cash them (Fraud mechanic).
+  - **Town Influence**: Track player control over a town.
+- **Gang Management**:
+  - **Wages**: Gang members require daily wages based on skill.
+  - **Charm Discount**: High Charm reduces wage costs.
+  - **Camp Upkeep**: Track and pay wages at the Wilderness Camp.
+- **Combat Depth**:
+  - **Surrender**: Enemies may surrender when low on HP or disarmed.
+  - **Recruitment**: Recruit surrendering enemies into your gang or as deputies.
+  - **Tactical Injuries**: Specific injuries (Broken Arm, Concussion) now apply stat penalties.
+
 ## [0.3.0] - 2025-11-22
 
 ### Added

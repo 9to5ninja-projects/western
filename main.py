@@ -4,6 +4,7 @@ import random
 from game_state import PlayerState, WorldState, Item, ItemType, AVAILABLE_HORSES, AVAILABLE_WEAPONS, AVAILABLE_HATS
 from ui import render_hud, get_menu_choice, clear_screen
 from duel_engine_v2 import DuelEngineV2, Combatant, Action, ai_cheater, ai_honorable, ai_brawler
+from shootout_engine import ShootoutEngine
 from characters import NPC
 
 def main():
@@ -43,6 +44,10 @@ def main():
             options["6"] = "Return to Camp (Leave Town)"
             # Sheriff is dangerous
             options["4"] = "Sheriff's Office (RISKY)"
+            
+        # Mayor Option
+        options["8"] = "Town Hall (Mayor)"
+        options["9"] = "Bank (Deposit/Cash)"
         
         choice = get_menu_choice(options)
         
@@ -65,6 +70,10 @@ def main():
                 sleep(player, world)
         elif choice == "7":
             travel_menu(player, world)
+        elif choice == "8":
+            visit_mayor(player, world)
+        elif choice == "9":
+            visit_bank(player, world)
         elif choice == "Q":
             sys.exit()
             
@@ -292,6 +301,11 @@ def loot_screen(player, world, npc):
         if npc.hat:
             options["3"] = f"Take Hat ({npc.hat.name}) - Major Dishonor"
         
+        # Check for Receipts
+        receipts = [i for i in npc.inventory if i.item_type == ItemType.RECEIPT]
+        if receipts:
+            options["4"] = f"Loot Bank Drafts ({len(receipts)} found)"
+
         options["B"] = "Leave Body"
         
         choice = get_menu_choice(options)
@@ -316,6 +330,13 @@ def loot_screen(player, world, npc):
             npc.hat = None
             player.honor -= 10
             world.add_heat(10)
+            time.sleep(1)
+        elif choice == "4" and receipts:
+            for r in receipts:
+                player.add_item(r)
+                print(f"You took {r.name}.")
+            npc.inventory = [i for i in npc.inventory if i.item_type != ItemType.RECEIPT]
+            player.honor -= 5
             time.sleep(1)
         elif choice == "B":
             break
@@ -406,15 +427,45 @@ def start_duel(player, world, npc=None, is_sheriff=False):
     while p1.alive and p2.alive and turn_count < 20:
         engine.render()
         
+        # Check if opponent surrendered in PREVIOUS turn
+        if p2.is_surrendering:
+            print(f"\n{p2.name} is asking for mercy!")
+            print("[1] Accept Surrender (End Fight)")
+            print("[2] Demand Loot (Conditional)")
+            print("[3] Ignore & Attack (Dishonorable)")
+            
+            sub = input("Choice: ")
+            if sub == "1":
+                print("You lower your weapon.")
+                p2.conscious = False # End loop gracefully
+                break
+            elif sub == "2":
+                print("You demand their valuables.")
+                # Check if they agree?
+                if random.random() < 0.8:
+                    print(f"{p2.name}: 'Fine! Take it!'")
+                    loot_screen(player, world, npc)
+                    p2.conscious = False
+                    break
+                else:
+                    print(f"{p2.name}: 'Never!'")
+                    p2.is_surrendering = False # They fight on!
+            elif sub == "3":
+                print("You ignore their plea.")
+                player.honor -= 5
+                # Continue to action selection
+        
         # Player Menu
         print("\n[1] PACE   [2] TURN   [3] DRAW   [4] SHOOT CENTER")
         print("[5] SHOOT HIGH [6] SHOOT LOW [7] RELOAD [8] DUCK")
+        print("[9] SURRENDER")
         
         choice = input("Action: ")
         map_act = {
             "1": Action.PACE, "2": Action.TURN, "3": Action.DRAW,
             "4": Action.SHOOT_CENTER, "5": Action.SHOOT_HIGH,
-            "6": Action.SHOOT_LOW, "7": Action.RELOAD, "8": Action.DUCK
+            "6": Action.SHOOT_LOW, "7": Action.RELOAD, "8": Action.DUCK,
+            "9": Action.SURRENDER
         }
         p1_act = map_act.get(choice, Action.WAIT)
         
@@ -422,12 +473,58 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         p2_act = ai_honorable(p2, p1, engine)
         
         engine.run_turn(p1_act, p2_act)
+        
+        # Check if Player Surrendered and AI Accepted
+        if p1.is_surrendering and p2_act == Action.WAIT:
+            print(f"\n{p2.name} accepts your surrender.")
+            p1.conscious = False # End loop
+            # Consequences?
+            loss = random.randint(5, 15)
+            player.cash = max(0, player.cash - loss)
+            print(f"They took ${loss} from you.")
+            break
+            
         turn_count += 1
         time.sleep(1.5)
         
     p1.sync_state()
     
-    if p1.alive and not p2.alive:
+    # Check Surrender (Post-Loop)
+    if p2.is_surrendering and p1.alive:
+        print(f"\n{npc.name} has SURRENDERED!")
+        print("1. Execute")
+        print("2. Let go")
+        if player.is_gang_leader or player.is_deputy:
+            print("3. Recruit")
+            
+        choice = input("Choice: ")
+        if choice == "1":
+            print("You pull the trigger.")
+            npc.alive = False
+            player.honor -= 10
+            world.add_heat(20)
+        elif choice == "3" and (player.is_gang_leader or player.is_deputy):
+            # Recruit Attempt
+            # Difficulty based on alignment?
+            diff = 50
+            if npc.alignment == "Lawful" and player.is_gang_leader: diff += 30
+            if npc.alignment == "Chaotic" and player.is_deputy: diff += 30
+            
+            roll = player.charm * 10 + random.randint(0, 50)
+            if roll > diff:
+                print(f"{npc.name}: 'Alright, I'm with you.'")
+                if player.is_gang_leader:
+                    player.gang.append(npc)
+                    print("Joined Gang.")
+                else:
+                    print("Sheriff: 'I'll process him as a new deputy.'")
+                    # Maybe add to a deputy list? For now just flavor.
+            else:
+                print(f"{npc.name}: 'I'd rather die!'")
+        else:
+            print("You let them run.")
+            
+    elif p1.alive and not p2.alive:
         print("\nVICTORY!")
         if npc: npc.alive = False # Mark NPC as dead
         
@@ -453,15 +550,35 @@ def start_duel(player, world, npc=None, is_sheriff=False):
 def visit_doctor(player, world):
     clear_screen()
     print("DOCTOR")
+    
+    # Heal HP
     if player.hp < player.max_hp:
         cost = (player.max_hp - player.hp) * 0.1
-        print(f"Heal to full for ${cost:.2f}?")
+        print(f"Heal Wounds (HP) to full for ${cost:.2f}?")
         if input("Y/N: ").upper() == "Y":
             if player.cash >= cost:
                 player.cash -= cost
                 player.hp = player.max_hp
                 player.blood = player.max_blood
                 print("Healed.")
+            else:
+                print("Not enough cash.")
+
+    # Treat Injuries
+    if player.injuries:
+        print("\nTREATING INJURIES:")
+        # Create a copy to iterate safely while modifying
+        for inj in list(player.injuries):
+            cost = 15.00 
+            print(f"- {inj} (Cost: ${cost:.2f})")
+            if input("Treat? (Y/N): ").upper() == "Y":
+                if player.cash >= cost:
+                    player.cash -= cost
+                    player.injuries.remove(inj)
+                    print("Treated.")
+                else:
+                    print("Not enough cash.")
+                    
     input("Press Enter...")
 
 def sleep(player, world):
@@ -501,7 +618,7 @@ def visit_stables(player, world):
         if choice == "1":
             print("\nAVAILABLE HORSES:")
             for i, h in enumerate(AVAILABLE_HORSES):
-                print(f"{i+1}. {h.name} (Spd: {h.stats['spd']}, HP: {h.stats['hp']}) - ${h.value:.2f}")
+                print(f"{i+1}. {h.name} (Spd: {h.stats.get('spd', 0)}, HP: {h.stats.get('hp', 0)}) - ${h.value:.2f}")
             
             try:
                 idx = int(input("Choice: ")) - 1
@@ -732,13 +849,30 @@ def patrol_town(player, world):
                 print("Sheriff: 'Good work, Deputy.'")
                 player.honor += 5
     elif roll < 0.5:
-        print("An outlaw rides into town looking for trouble.")
-        if input("Confront? (Y/N): ").upper() == "Y":
-            start_duel(player, world, NPC("Outlaw"))
-            if player.alive:
-                print("Sheriff: 'That's one less problem to worry about.'")
-                player.reputation += 5
-                player.cash += 10.00 # Bonus
+        print("A gang of outlaws rides into town looking for trouble!")
+        print("Sheriff: 'Deputy! With me!'")
+        
+        # Setup Teams: Player + Sheriff vs Outlaws
+        sheriff = NPC("Sheriff")
+        sheriff.name = "Sheriff" # Generic ally
+        
+        player_team = [player, sheriff]
+        enemy_team = [NPC("Outlaw") for _ in range(random.randint(2, 3))]
+        
+        print(f"Enemies: {len(enemy_team)}")
+        input("Start Shootout (Press Enter)")
+        
+        engine = ShootoutEngine(player_team, enemy_team)
+        while True:
+            engine.render()
+            if not engine.run_turn(): break
+            time.sleep(1.5)
+            
+        if player.alive:
+            print("Sheriff: 'That's one less problem to worry about.'")
+            player.reputation += 10
+            player.cash += 20.00 # Bonus
+            
     else:
         print("It was a quiet week.")
     
@@ -763,13 +897,20 @@ def visit_camp(player, world):
         print("\n=== WILDERNESS CAMP ===")
         
         # Gang Upkeep
-        daily_cost = len(player.gang) * 0.50
-        print(f"Gang Upkeep: ${daily_cost:.2f}/day")
-        
+        # Wages based on skill/traits, reduced by Charm
+        total_wage = 0
         print(f"Gang Members: {len(player.gang)}")
         for m in player.gang:
+            base_wage = m.wage
+            # Charm Discount (10% per charm point, max 50%)
+            discount = min(0.5, player.charm * 0.1)
+            final_wage = base_wage * (1.0 - discount)
+            total_wage += final_wage
+            
             traits = ", ".join(m.traits) if m.traits else "None"
-            print(f"- {m.name} ({m.archetype}) [{traits}]")
+            print(f"- {m.name} ({m.archetype}) [{traits}] - Wage: ${final_wage:.2f}/day")
+            
+        print(f"Total Daily Upkeep: ${total_wage:.2f}")
             
         options = {
             "1": "Rest by Campfire (Free, Slow Heal)",
@@ -784,10 +925,10 @@ def visit_camp(player, world):
             print("\nYou sleep under the stars.")
             
             # Pay Upkeep
-            total_cost = daily_cost * 7 # Weekly
-            if player.cash >= total_cost:
-                player.cash -= total_cost
-                print(f"Paid gang wages: ${total_cost:.2f}")
+            weekly_cost = total_wage * 7
+            if player.cash >= weekly_cost:
+                player.cash -= weekly_cost
+                print(f"Paid gang wages: ${weekly_cost:.2f}")
             else:
                 print("You couldn't pay the gang fully. Morale is low.")
                 # Chance for members to leave?
@@ -875,45 +1016,35 @@ def rob_bank(player, world):
     guards = [NPC("Sheriff")] + [NPC("Cowboy") for _ in range(max(1, base_guards))]
     print(f"Guards: {len(guards)}")
     
-    # Gang Combat Calculation
-    gang_power = 0
-    for m in player.gang:
-        p = 10
-        if "Brute" in m.traits: p += 5
-        if "Sharpshooter" in m.traits: p += 5
-        if "Drunkard" in m.traits: p -= 5
-        gang_power += p
-        
-    # Safecracker Bonus
-    safecrackers = sum(1 for m in player.gang if "Safecracker" in m.traits)
+    # Setup Teams
+    player_team = [player] + player.gang
+    enemy_team = guards
     
-    enemy_power = len(guards) * 15
+    print("A shootout erupts!")
+    input("Press Enter to fight...")
     
-    print(f"Your gang engages the guards! (Power: {gang_power} vs {enemy_power})")
+    engine = ShootoutEngine(player_team, enemy_team)
     
-    if gang_power >= enemy_power:
-        print("Your gang holds them off!")
-    else:
-        print("Your gang is overwhelmed! You have to fight!")
-        # TODO: Make this harder
-        
-    # Player fights the Head Guard/Sheriff
-    boss = NPC("Sheriff")
-    if "Fortified" in town.traits:
-        boss.name = "Pinkerton Agent " + boss.name.split()[1]
-        boss.hp += 20
-        boss.acc += 10
-        
-    print(f"You face {boss.name}!")
+    # Run Shootout
+    while True:
+        engine.render()
+        cont = engine.run_turn()
+        time.sleep(1.5)
+        if not cont:
+            break
+            
+    engine.render()
     
-    start_duel(player, world, boss, is_sheriff=True)
+    # Check Outcome
+    enemies_alive = any(e.alive for e in guards)
     
-    if player.alive:
+    if player.alive and not enemies_alive:
         base_loot = random.randint(100, 300)
         if "Rich" in town.traits: base_loot *= 2
         if "Poor" in town.traits: base_loot *= 0.5
         
         # Safecracker Bonus
+        safecrackers = sum(1 for m in player.gang if "Safecracker" in m.traits and m.alive)
         if safecrackers > 0:
             bonus = base_loot * (0.2 * safecrackers)
             print(f"Safecracker bonus: +${bonus:.2f}")
@@ -929,6 +1060,14 @@ def rob_bank(player, world):
         print("You ride off into the sunset before reinforcements arrive!")
         player.location = "Wilderness Camp"
         time.sleep(2)
+        
+    elif player.alive and enemies_alive:
+        print("\nYou were forced to flee!")
+        player.location = "Wilderness Camp"
+        time.sleep(2)
+        
+    else:
+        print("\nYou died in the shootout.")
 
 def update_world_simulation(world):
     # 1. Spawn new NPCs if low
@@ -977,6 +1116,210 @@ def update_world_simulation(world):
         "A storm is brewing in the north."
     ]
     world.rumors.append(random.choice(generic_rumors))
+
+def visit_mayor(player, world):
+    town = world.get_town()
+    while True:
+        render_hud(player, world)
+        print(f"\n=== TOWN HALL: {town.name.upper()} ===")
+        
+        if town.player_is_mayor:
+            print("You sit at the Mayor's desk.")
+            print(f"Town Influence: {town.influence}%")
+            print(f"Town Treasury: High") # Placeholder
+            
+            options = {
+                "1": "Collect Taxes (+$50, +Heat)",
+                "2": "Hire Sheriff (Cost $50)",
+                "3": "Host Gala (Cost $100, +Rep)",
+                "B": "Back"
+            }
+            
+            choice = get_menu_choice(options)
+            if choice == "1":
+                print("You squeeze the locals for cash.")
+                player.cash += 50
+                town.heat += 20
+                town.influence -= 5
+                time.sleep(1)
+            elif choice == "B":
+                break
+            # TODO: Implement others
+            
+        elif town.mayor_status == "Dead":
+            print("The Mayor's office is empty. The previous mayor was killed.")
+            print("The town is in chaos.")
+            
+            options = {
+                "1": "Declare Martial Law (Take Over)",
+                "B": "Back"
+            }
+            
+            choice = get_menu_choice(options)
+            if choice == "1":
+                if player.reputation > 50 or len(player.gang) > 3:
+                    print("You slam your gun on the desk. 'I'm in charge now.'")
+                    town.player_is_mayor = True
+                    town.mayor_status = "Alive" # You are the mayor
+                    town.influence = 50
+                else:
+                    print("The townsfolk laugh you out of the office.")
+                    time.sleep(1)
+            elif choice == "B":
+                break
+                
+        else:
+            print("The Mayor looks up from his paperwork.")
+            if town.mayor_status == "Bribed":
+                print("Mayor: 'I'm looking the other way, as agreed.'")
+            else:
+                print("Mayor: 'What do you want?'")
+                
+            options = {
+                "1": "Bribe ($50) - Ignore Crimes for 1 Week",
+                "2": "Intimidate (Req: High Rep/Gang)",
+                "3": "Kill Him",
+                "B": "Back"
+            }
+            
+            if player.reputation > 80 and not player.is_gang_leader:
+                options["4"] = "Run for Mayor (Election)"
+            
+            choice = get_menu_choice(options)
+            
+            if choice == "1":
+                if player.cash >= 50:
+                    player.cash -= 50
+                    town.mayor_status = "Bribed"
+                    print("Mayor: 'A pleasure doing business.'")
+                    town.heat = 0 # Reset heat temporarily
+                else:
+                    print("Mayor: 'Get out, pauper.'")
+                time.sleep(1)
+                
+            elif choice == "2":
+                # Intimidate
+                power = player.reputation + (len(player.gang) * 10)
+                if power > 60:
+                    print("You threaten the Mayor.")
+                    print("Mayor: 'Okay! Okay! Just don't hurt me!'")
+                    town.mayor_status = "Bribed"
+                    town.influence += 10
+                else:
+                    print("Mayor: 'Guards! Remove this ruffian!'")
+                    start_brawl(player, world, NPC("Sheriff"))
+                time.sleep(1)
+                
+            elif choice == "3":
+                print("You draw your weapon!")
+                # Mayor has guards?
+                guards = [NPC("Sheriff")]
+                engine = ShootoutEngine([player] + player.gang, guards + [NPC("Mayor")])
+                while True:
+                    engine.render()
+                    if not engine.run_turn(): break
+                    time.sleep(1)
+                
+                if player.alive:
+                    print("The Mayor is dead.")
+                    town.mayor_status = "Dead"
+                    player.honor -= 50
+                    world.add_heat(100)
+                else:
+                    print("You failed to kill the Mayor.")
+                    
+            elif choice == "4":
+                print("You start your campaign...")
+                # Simple check for now
+                if random.random() < 0.7:
+                    print("The people love you! You win the election!")
+                    town.player_is_mayor = True
+                else:
+                    print("You lost the election.")
+                time.sleep(1)
+                
+            elif choice == "B":
+                break
+
+def visit_bank(player, world):
+    while True:
+        render_hud(player, world)
+        print("\n=== FIRST NATIONAL BANK ===")
+        
+        # Check for receipts
+        receipts = [i for i in player.inventory if i.item_type == ItemType.RECEIPT]
+        
+        options = {
+            "1": "Deposit Cash (Safe Storage)",
+            "2": "Withdraw Cash",
+            "B": "Back"
+        }
+        
+        if receipts:
+            options["3"] = f"Cash Bank Drafts ({len(receipts)} available)"
+            
+        choice = get_menu_choice(options)
+        
+        if choice == "1":
+            # Placeholder for deposit logic
+            print("Teller: 'We don't have accounts set up for drifters yet.'")
+            time.sleep(1)
+            
+        elif choice == "2":
+            print("Teller: 'You have no account here.'")
+            time.sleep(1)
+            
+        elif choice == "3":
+            print("\n=== CASHING DRAFTS ===")
+            for i, r in enumerate(receipts):
+                origin = r.stats.get("origin", "Unknown")
+                print(f"{i+1}. {r.name} from {origin}")
+                
+            try:
+                idx = int(input("Select draft to cash (0 to cancel): ")) - 1
+                if 0 <= idx < len(receipts):
+                    draft = receipts[idx]
+                    origin = draft.stats.get("origin")
+                    
+                    print(f"Teller examines the draft for ${draft.value:.2f}...")
+                    time.sleep(1)
+                    
+                    if origin == world.town_name:
+                        # Valid town, but is it your name? No.
+                        # Fraud Check
+                        # Difficulty based on Town Traits
+                        difficulty = 50
+                        town = world.get_town()
+                        if "Rich" in town.traits: difficulty += 20
+                        if "Lawless" in town.traits: difficulty -= 20
+                        
+                        # Player Skill
+                        skill = player.charm * 10 + player.luck_base
+                        
+                        if skill + random.randint(0, 50) > difficulty:
+                            print("Teller: 'Everything seems in order.'")
+                            print(f"You receive ${draft.value:.2f}.")
+                            player.cash += draft.value
+                            player.inventory.remove(draft)
+                        else:
+                            print("Teller: 'Wait a minute... this isn't you!'")
+                            print("ALARM RAISED!")
+                            world.add_heat(30)
+                            player.bounty += 20
+                            player.honor -= 5
+                            # Fight or Flee?
+                            if input("Flee? (Y/N): ").upper() == "N":
+                                start_duel(player, world, NPC("Sheriff"))
+                            else:
+                                print("You run out of the bank!")
+                                return
+                    else:
+                        print(f"Teller: 'This is drawn on the {origin} branch. You must go there to cash it.'")
+                        time.sleep(1.5)
+            except: pass
+            
+        elif choice == "B":
+            break
 
 if __name__ == "__main__":
     main()

@@ -96,6 +96,7 @@ class Combatant:
         self.blinded = 0 # 0, 1, 2 eyes lost
         self.injuries = []
         self.dominant_hand = BodyPart.ARM_R
+        self.is_surrendering = False 
 
     def sync_state(self):
         """Syncs combat damage back to persistent player state"""
@@ -104,7 +105,11 @@ class Combatant:
             self.player_state.blood = self.blood
             self.player_state.alive = self.alive
             self.player_state.conscious = self.conscious
-            # TODO: Sync injuries permanently
+            
+            # Sync injuries
+            for inj in self.injuries:
+                if inj not in self.player_state.injuries:
+                    self.player_state.injuries.append(inj)
 
     def get_distance_from_center(self):
         return abs(self.position)
@@ -208,6 +213,18 @@ class DuelEngineV2:
         # Structural Damage
         struct_dmg = random.randint(5, 15)
         target.body_parts[hit_part] = max(0, target.body_parts[hit_part] - struct_dmg)
+        
+        # Check for Injury
+        if target.body_parts[hit_part] <= 0:
+            injury_name = None
+            if hit_part in [BodyPart.ARM_L, BodyPart.ARM_R]: injury_name = "Broken Arm"
+            elif hit_part in [BodyPart.LEG_L, BodyPart.LEG_R]: injury_name = "Broken Leg"
+            elif hit_part == BodyPart.HEAD and target.alive: injury_name = "Concussion"
+            elif hit_part == BodyPart.CHEST: injury_name = "Cracked Ribs"
+            
+            if injury_name and injury_name not in target.injuries:
+                target.injuries.append(injury_name)
+                msg += f" CRITICAL INJURY: {injury_name}!"
         
         # Specific Part Effects
         if hit_part == BodyPart.HEAD:
@@ -388,6 +405,11 @@ class DuelEngineV2:
             res = self.resolve_punch(actor, target)
             msgs.append(res)
 
+        elif action == Action.SURRENDER:
+            actor.is_surrendering = True
+            actor.weapon_state = WeaponState.HOLSTERED # Put gun away to show intent
+            msgs.append(f"{actor.name} raises their hands! 'I YIELD!'")
+
         return msgs
 
     def run_turn(self, a1, a2):
@@ -423,6 +445,21 @@ class DuelEngineV2:
                 if p.blood <= 0:
                     p.alive = False
                     self.log.append(f"{p.name} has died.")
+                    
+        # AI Surrender Logic (Decide to surrender for NEXT turn)
+        if self.p2.alive and self.p2.conscious and not self.p2.player_state and not self.p2.is_surrendering:
+            # If HP low or Disarmed
+            should_surrender = False
+            if self.p2.hp < self.p2.max_hp * 0.2: should_surrender = True
+            if self.p2.weapon_state == WeaponState.DROPPED and self.p1.weapon_state == WeaponState.DRAWN: should_surrender = True
+            
+            if should_surrender:
+                # Check Bravery/Traits? For now, 50% chance
+                if random.random() < 0.5:
+                    # They will choose SURRENDER action next turn
+                    # We can't force the action here, but we can set a flag for the AI function to read?
+                    # Or just let the AI function handle it.
+                    pass
 
     def print_log(self):
         for l in self.log:
@@ -536,6 +573,15 @@ def run_simulation(scenario_name, p1_ai, p2_ai):
 
 # AI Behaviors
 def ai_honorable(me, opp, engine):
+    # Check if opponent is surrendering
+    if opp.is_surrendering:
+        return Action.WAIT
+
+    # Self Preservation (Surrender?)
+    if me.hp < me.max_hp * 0.2 or (me.weapon_state == WeaponState.DROPPED and opp.weapon_state == WeaponState.DRAWN):
+        if random.random() < 0.7: # Honorable people know when they are beat
+            return Action.SURRENDER
+
     # Pace to 10, Turn, Draw, Shoot
     if abs(me.position) < 10:
         return Action.PACE
@@ -546,6 +592,17 @@ def ai_honorable(me, opp, engine):
     return Action.SHOOT_CENTER
 
 def ai_cheater(me, opp, engine):
+    # Cheaters might shoot surrendering opponents!
+    if opp.is_surrendering:
+        if random.random() < 0.5:
+            return Action.SHOOT_CENTER # Cheap shot!
+        return Action.WAIT
+
+    # Self Preservation
+    if me.hp < me.max_hp * 0.15:
+        if random.random() < 0.3: # Cheaters are stubborn or cowardly?
+            return Action.SURRENDER
+
     # Turn immediately, Draw, Shoot
     if me.orientation != Orientation.FACING_OPPONENT:
         return Action.TURN
@@ -556,6 +613,9 @@ def ai_cheater(me, opp, engine):
     return Action.RELOAD
 
 def ai_brawler(me, opp, engine):
+    if opp.is_surrendering:
+        return Action.WAIT
+
     # Turn immediately, Punch
     if me.orientation != Orientation.FACING_OPPONENT:
         return Action.TURN

@@ -43,11 +43,19 @@ ARCHETYPES = {
     "Sheriff": {
         "cash": (20.0, 40.0), 
         "wpn": "Iron Peacemaker", 
-        "hat": "Sheriff's Stetson",
+        "hat": "Sheriff's Stetson", 
         "skill": 8,
         "lines": ["I am the law.", "Drop it!", "You're coming with me."],
         "traits": ["Sharpshooter", "Brute"]
     },
+    "Mayor": {
+        "cash": (100.0, 500.0),
+        "wpn": "Pearl-Handled Colt", # For show
+        "hat": "Wide-Brim Felt", # Fancy
+        "skill": -2, # Not a fighter
+        "lines": ["I run this town.", "Everything has a price.", "Do you know who I am?"],
+        "traits": ["Greedy", "Loyal"] # Loyal to money?
+    }
 }
 
 class NPC:
@@ -110,6 +118,18 @@ class NPC:
         self.bounty = 0.0
         self.location = "Unknown" # Assigned by World Simulation
         self.rumor = "" # Current rumor about them
+        
+        # Economy & Alignment
+        self.alignment = random.choice(["Lawful", "Neutral", "Chaotic"])
+        self.wage = self.recruit_cost * 0.1 # Daily wage is 10% of recruit cost
+        
+        # Inventory (Bank Receipts)
+        self.inventory = []
+        if random.random() < 0.2: # 20% chance to carry a bank receipt
+            amount = round(random.uniform(10, 100), 2)
+            origin = random.choice(["Dusty Creek", "Shinbone", "Brimstone", "Silver Hollow"])
+            receipt = Item(f"Bank Draft (${amount})", ItemType.RECEIPT, amount, {"origin": origin})
+            self.inventory.append(receipt)
 
     def get_line(self):
         return f"{random.choice(self.lines)} [{self.quirk}]"

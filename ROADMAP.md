@@ -14,8 +14,8 @@
     - Leg injuries preventing flee.
     - Horse requirement for escaping town after crimes.
 
-## Phase 3: Economy & Injuries (Partially Completed)
-- [ ] **Tactical Injuries**:
+## Phase 3: Economy & Injuries (Completed)
+- [x] **Tactical Injuries**:
     - Implement stat penalties for specific injuries (Leg=Speed, Arm=Acc).
     - Persistent injury tracking in `PlayerState`.
 - [x] **Doctor**:
@@ -42,13 +42,21 @@
 - [x] **Town States**: Implement Lawful, Corrupt, Lawless, Vigilante states.
 - [x] **NPC Generation**: Random duelists/brawlers with unique stats.
 
-## Phase 6: The Living World (In Progress)
+## Phase 6: The Living World (Completed)
 - [x] **The National List**:
     - Pool of persistent NPCs (Outlaws, Bounty Hunters).
     - Migration logic (NPCs moving between towns).
-- [ ] **Volatile Law**:
+- [x] **Volatile Law**:
     - Sheriff/Deputy slots that can be filled or emptied.
     - Consequences of "No Sheriff" (Crime wave).
 - [ ] **Permadeath Options**:
     - "New Character, Same World" logic.
     - "Full Reset" logic.
+
+## Phase 7: Politics & Warfare (New)
+- [x] **Group Combat**: Shootout engine for gang wars.
+- [x] **Town Politics**: Mayors, Bribes, and Elections.
+- [x] **Banking**: Fraud and Economy.
+- [ ] **Territory Control**:
+    - Racket system (Protection money).
+    - Town takeover mechanics.

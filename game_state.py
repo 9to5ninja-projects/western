@@ -6,6 +6,7 @@ class ItemType(Enum):
     AMMO = "ammo"
     HORSE = "horse"
     HAT = "hat"
+    RECEIPT = "receipt"
     MISC = "misc"
 
 class Item:
@@ -45,6 +46,14 @@ AVAILABLE_WEAPONS = [
     Item("Pearl-Handled Colt", ItemType.WEAPON, 85.00, {"acc": 10, "spd": 5}, "Beautiful balance and precision."),
     Item("Sawed-Off Shotgun", ItemType.WEAPON, 60.00, {"acc": -10, "spd": 10, "dmg": 20}, "Devastating at close range."),
 ]
+
+INJURY_EFFECTS = {
+    "Broken Arm": {"acc": -15, "spd": 0, "desc": "Aim is shaky."},
+    "Broken Leg": {"acc": 0, "spd": -15, "desc": "Can't move fast."},
+    "Concussion": {"acc": -10, "spd": -10, "desc": "Head is spinning."},
+    "Eye Injury": {"acc": -20, "spd": 0, "desc": "Depth perception gone."},
+    "Cracked Ribs": {"acc": 0, "spd": -5, "desc": "Breathing hurts."}
+}
 
 class PlayerState:
     def __init__(self, name):
@@ -100,12 +109,23 @@ class PlayerState:
     def get_acc(self):
         # Base + Weapon + Injuries
         mod = self.equipped_weapon.stats.get("acc", 0)
-        # TODO: Calculate injury penalties
-        return self.acc_base + mod
+        
+        injury_mod = 0
+        for inj in self.injuries:
+            effect = INJURY_EFFECTS.get(inj, {})
+            injury_mod += effect.get("acc", 0)
+            
+        return self.acc_base + mod + injury_mod
 
     def get_spd(self):
         mod = self.equipped_weapon.stats.get("spd", 0)
-        return self.spd_base + mod
+        
+        injury_mod = 0
+        for inj in self.injuries:
+            effect = INJURY_EFFECTS.get(inj, {})
+            injury_mod += effect.get("spd", 0)
+            
+        return self.spd_base + mod + injury_mod
 
     def add_item(self, item):
         self.inventory.append(item)
@@ -126,6 +146,12 @@ class Town:
         self.heat = 0
         self.bounty = 0.0
         self.reputation = 0
+        
+        # Politics
+        self.mayor_status = "Alive" # Alive, Dead, Bribed
+        self.player_is_mayor = False
+        self.influence = 0 # 0-100 (Player control)
+        self.treasury = 1000.0 # Funds for wages/repairs
 
 class WorldState:
     def __init__(self):
