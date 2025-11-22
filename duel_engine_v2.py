@@ -24,6 +24,7 @@ class Orientation(Enum):
 
 class Action(Enum):
     PACE = "pace"           # Move 1 away from center
+    STEP_IN = "step_in"     # Move 1 toward center
     FLEE = "flee"           # Move 2 away from center (if > 13)
     TURN = "turn"           # Toggle orientation
     DRAW = "draw"           # Holstered -> Drawn
@@ -32,8 +33,10 @@ class Action(Enum):
     SHOOT_CENTER = "shoot_center"
     SHOOT_LOW = "shoot_low"
     RELOAD = "reload"
-    DUCK = "duck"           # Toggle stance
-    STAND = "stand"         # Toggle stance
+    DUCK = "duck"           # Toggle stance (Action)
+    STAND = "stand"         # Toggle stance (Action)
+    DUCK_FIRE = "duck_fire" # Duck and Shoot (Penalty)
+    STAND_FIRE = "stand_fire" # Stand and Shoot (Penalty)
     JUMP = "jump"           # Instant evasion
     TAKE_COVER = "take_cover"
     PUNCH = "punch"
@@ -139,10 +142,15 @@ class DuelEngineV2:
     def get_distance(self):
         return abs(self.p1.position - self.p2.position)
 
-    def calculate_hit(self, shooter, target, aim_zone):
-        # 1. Check Orientation
+    def calculate_hit(self, shooter, target, aim_zone, accuracy_penalty=0):
+        msg_prefix = ""
+
+        # 1. Check Orientation (Dirty Move Logic)
         if shooter.orientation != Orientation.FACING_OPPONENT:
-            return BodyPart.MISS, 0, "Shooter is not facing target!"
+            # Dirty Move: Spin and Shoot
+            shooter.orientation = Orientation.FACING_OPPONENT
+            accuracy_penalty += 50
+            msg_prefix = "Spins and fires! "
 
         # 2. Check Weapon
         if shooter.weapon_state != WeaponState.DRAWN:
@@ -157,7 +165,7 @@ class DuelEngineV2:
         dist = self.get_distance()
         
         # Base ACC
-        hit_chance = shooter.acc
+        hit_chance = shooter.acc - accuracy_penalty
         
         # Distance Penalty (High penalty for poor stats)
         hit_chance -= (dist * 2)
@@ -170,10 +178,15 @@ class DuelEngineV2:
         hit_chance -= (shooter.blinded * 25)
         
         # Target Stance
+        # "if your are prone or crouched your accuraccy increases but your evasion decreases."
+        if shooter.is_ducking:
+            hit_chance += 15 # Steady aim
+            
         if target.is_ducking:
-            hit_chance -= 15
+            hit_chance += 15 # Easier target (Evasion decreases)
+            
         if target.is_jumping:
-            hit_chance -= 25
+            hit_chance -= 30 # Hard to hit
             
         # Luck Modifier
         hit_chance += (shooter.luck - 50) / 5
@@ -192,7 +205,7 @@ class DuelEngineV2:
                 "Shot knocks a hat off a bystander."
             ]
             flavor = random.choice(miss_msgs)
-            return BodyPart.MISS, 0, f"Miss! {flavor}"
+            return BodyPart.MISS, 0, f"{msg_prefix}Miss! {flavor}"
 
         # 5. Determine Hit Location
         # Simplified scatter based on aim
@@ -207,7 +220,7 @@ class DuelEngineV2:
         hit_part = random.choice(parts)
         
         # 6. Calculate Effects
-        msg = f"Hits {hit_part.value}!"
+        msg = f"{msg_prefix}Hits {hit_part.value}!"
         damage_blood = 1 # Base blood loss for any hit
         
         # Structural Damage
@@ -390,6 +403,28 @@ class DuelEngineV2:
             actor.is_ducking = False
             msgs.append(f"{actor.name} stands.")
 
+        elif action == Action.DUCK_FIRE:
+            actor.is_ducking = True
+            if actor.ammo > 0:
+                actor.ammo -= 1
+                part, blood_loss, msg = self.calculate_hit(actor, target, Action.SHOOT_CENTER, accuracy_penalty=20)
+                msgs.append(f"{actor.name} ducks and fires: {msg}")
+                if part != BodyPart.MISS:
+                    target.blood -= blood_loss
+            else:
+                msgs.append(f"{actor.name} ducks but clicks on empty!")
+
+        elif action == Action.STAND_FIRE:
+            actor.is_ducking = False
+            if actor.ammo > 0:
+                actor.ammo -= 1
+                part, blood_loss, msg = self.calculate_hit(actor, target, Action.SHOOT_CENTER, accuracy_penalty=20)
+                msgs.append(f"{actor.name} rises and fires: {msg}")
+                if part != BodyPart.MISS:
+                    target.blood -= blood_loss
+            else:
+                msgs.append(f"{actor.name} rises but clicks on empty!")
+
         elif action == Action.JUMP:
             actor.is_jumping = True
             msgs.append(f"{actor.name} jumps!")
@@ -410,6 +445,15 @@ class DuelEngineV2:
             actor.weapon_state = WeaponState.HOLSTERED # Put gun away to show intent
             msgs.append(f"{actor.name} raises their hands! 'I YIELD!'")
 
+        elif action == Action.STEP_IN:
+            # Move toward center
+            if actor.position > 0:
+                actor.position -= 1
+            elif actor.position < 0:
+                actor.position += 1
+            # If at 0, cross over? Or stay? Let's stay at 0 for now (melee range)
+            msgs.append(f"{actor.name} steps in. Pos: {actor.position}")
+        
         return msgs
 
     def run_turn(self, a1, a2):

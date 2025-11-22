@@ -458,14 +458,16 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         # Player Menu
         print("\n[1] PACE   [2] TURN   [3] DRAW   [4] SHOOT CENTER")
         print("[5] SHOOT HIGH [6] SHOOT LOW [7] RELOAD [8] DUCK")
-        print("[9] SURRENDER")
+        print("[9] SURRENDER [0] STEP IN [J] JUMP")
+        print("[D] DUCK & SHOOT [R] RISE & SHOOT")
         
-        choice = input("Action: ")
+        choice = input("Action: ").upper()
         map_act = {
             "1": Action.PACE, "2": Action.TURN, "3": Action.DRAW,
             "4": Action.SHOOT_CENTER, "5": Action.SHOOT_HIGH,
             "6": Action.SHOOT_LOW, "7": Action.RELOAD, "8": Action.DUCK,
-            "9": Action.SURRENDER
+            "9": Action.SURRENDER, "0": Action.STEP_IN, "J": Action.JUMP,
+            "D": Action.DUCK_FIRE, "R": Action.STAND_FIRE
         }
         p1_act = map_act.get(choice, Action.WAIT)
         
@@ -786,7 +788,20 @@ def visit_sheriff(player, world):
         
         choice = get_menu_choice(options)
         
-        if choice == "2":
+        if choice == "1":
+            # Check Bounties
+            print("\n=== WANTED POSTERS ===")
+            wanted = [n for n in world.active_npcs if n.bounty > 0]
+            if not wanted:
+                print("No active bounties.")
+            else:
+                for n in wanted:
+                    loc = n.location if n.location else "Unknown"
+                    print(f"- {n.name} (${n.bounty:.2f}) - Last seen: {loc}")
+                    print(f"  '{n.rumor}'")
+            input("Press Enter...")
+
+        elif choice == "2":
             cost = heat * 2
             if cost > 0:
                 print(f"Sheriff: 'That'll clear your name around here. ${cost:.2f}.'")
@@ -799,17 +814,6 @@ def visit_sheriff(player, world):
                         print("Sheriff: 'Come back when you have the money.'")
             else:
                 print("Sheriff: 'You're clean, son.'")
-                
-            # Check Bounties
-            print("\n=== WANTED POSTERS ===")
-            wanted = [n for n in world.active_npcs if n.bounty > 0]
-            if not wanted:
-                print("No active bounties.")
-            else:
-                for n in wanted:
-                    loc = n.location if n.location else "Unknown"
-                    print(f"- {n.name} (${n.bounty:.2f}) - Last seen: {loc}")
-                    print(f"  '{n.rumor}'")
 
         elif choice == "3":
             if not player.is_deputy:

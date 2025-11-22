@@ -91,3 +91,21 @@ All notable changes to this project will be documented in this file.
 - **Visualizer**:
   - ASCII arena rendering for combat.
   - Turn-by-turn animation.
+
+## [0.5.0] - 2025-11-22
+
+### Added
+- **Combat Refinement (Duel Engine V2)**:
+  - **New Actions**:
+    - `STEP IN`: Move towards opponent without ending turn (aggressive positioning).
+    - `JUMP`: High evasion action (-30% hit chance for opponent) but prevents shooting.
+    - `DUCK & SHOOT`: Fire while ducking (Increased accuracy, reduced evasion).
+    - `RISE & SHOOT`: Fire while standing up.
+  - **Stance Mechanics**:
+    - **Ducking**: Increases accuracy (+15%) but decreases evasion (easier to be hit).
+    - **Jumping**: Significantly increases evasion.
+  - **Dirty Moves**:
+    - **Spin & Shoot**: Shooting while facing away now automatically turns the character but incurs a 50% accuracy penalty.
+- **Global Systems**:
+  - **Cross-Town Bounties**: Sheriff's office now displays bounties for NPCs in other towns.
+  - **Bank Fraud**: Looted Bank Drafts must be cashed at their specific town of origin (or forged with a Charm check).
