@@ -15,22 +15,27 @@ A text-based simulation engine for western duels and cantina brawls.
 - **Stats**: Brawl Attack and Defense values.
 - **Disarming**: Punches can knock weapons out of hands.
 
-## Running the Prototypes
+### Meta-Game & Progression
+- **Persistent World**: Track cash, honor, reputation, and bounties across days.
+- **Town Hub**: Visit locations like the Cantina, Doctor, and Sheriff.
+- **Social Filter**: Honor determines how NPCs react to you.
+- **Consequences**: Collateral damage affects reputation; losing fights leads to medical bills or jail.
 
-### Basic Duel Engine
-Run the initial prototype to see basic shooting mechanics:
+## Running the Game
+
+### Full Game Loop
+Run the main executable to experience the town, economy, and combat integration:
 ```bash
-python duel_engine.py
+python main.py
 ```
 
-### Advanced Engine (V2)
-Run the advanced engine to see simulations of different scenarios (e.g., Brawler vs Gunman):
-```bash
-python duel_engine_v2.py
-```
+### Prototypes
+You can still run the isolated engines for testing:
+- **Basic Duel**: `python duel_engine.py`
+- **Advanced Simulation**: `python duel_engine_v2.py`
 
-## Scenarios
-The V2 engine includes pre-scripted AI behaviors to test mechanics:
-- **Honorable Duel**: Both players pace 10 steps, turn, and fire.
-- **Cheater**: Turns early to shoot the opponent in the back.
-- **Brawler**: Rushes in to punch and disarm the gunman.
+## Vision
+This is a reputation-survival sim disguised as a shooter. The gun is just how you punctuate your choices.
+- **Sheriff vs Outlaw**: Enforce the law or run from it.
+- **Emergent Gameplay**: Random town seeds, collateral damage feuds, and dynamic rivalries.
+- **No Game Over**: Defeat means waking up at the doctor's or in jail, not a reload screen.

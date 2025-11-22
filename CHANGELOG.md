@@ -27,3 +27,23 @@ All notable changes to this project will be documented in this file.
     - Honorable Duel.
     - Cheater vs Honorable.
     - Brawler vs Gunman.
+
+## [0.2.0] - 2025-11-22
+
+### Added
+- **Game State Management (`game_state.py`)**:
+  - Persistent player stats (Cash, Honor, Reputation, Bounty).
+  - Inventory system (Weapons, Ammo, Horses).
+  - World state (Time, Day, Town Name).
+- **User Interface (`ui.py`)**:
+  - Persistent HUD with ASCII art layout.
+  - Town menu navigation.
+  - Location-specific interactions (Cantina, Doctor, etc.).
+- **Main Game Loop (`main.py`)**:
+  - Integrated town exploration and combat.
+  - Cantina interactions: Drinking (Heal), Brawling (Non-lethal), Dueling (Lethal).
+  - Doctor interaction: Paid healing.
+  - Sleep mechanic: Advance day and heal.
+- **Visualizer**:
+  - ASCII arena rendering for combat.
+  - Turn-by-turn animation.

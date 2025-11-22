@@ -1,4 +1,6 @@
 import random
+import time
+import os
 from enum import Enum
 
 class BodyPart(Enum):
@@ -39,14 +41,33 @@ class Action(Enum):
     WAIT = "wait"
 
 class Combatant:
-    def __init__(self, name, direction_multiplier):
+    def __init__(self, name, direction_multiplier, player_state=None):
         self.name = name
-        self.blood = 12
-        self.max_blood = 12
-        self.hp = 100
-        self.max_hp = 100
-        self.brawl_atk = 10
-        self.brawl_def = 10
+        self.player_state = player_state # Reference to persistent state
+        
+        if player_state:
+            self.blood = player_state.blood
+            self.max_blood = player_state.max_blood
+            self.hp = player_state.hp
+            self.max_hp = player_state.max_hp
+            self.brawl_atk = player_state.brawl_atk
+            self.brawl_def = player_state.brawl_def
+            self.acc = player_state.get_acc()
+            self.luck = player_state.luck_base
+            self.ammo = 6 # Cylinder capacity, not total ammo
+            # TODO: Load from inventory?
+        else:
+            # Default/NPC stats
+            self.blood = 12
+            self.max_blood = 12
+            self.hp = 100
+            self.max_hp = 100
+            self.brawl_atk = 10
+            self.brawl_def = 10
+            self.acc = 30
+            self.luck = 30
+            self.ammo = 6
+
         self.bleeding_rate = 0
         self.conscious = True
         self.alive = True
@@ -62,7 +83,6 @@ class Combatant:
             BodyPart.LEG_R: 25,
         }
         
-        self.ammo = 6
         self.position = 0
         self.direction_multiplier = direction_multiplier # 1 (Right) or -1 (Left)
         self.orientation = Orientation.FACING_AWAY # Start back-to-back
@@ -70,14 +90,21 @@ class Combatant:
         self.weapon_state = WeaponState.HOLSTERED
         self.is_ducking = False
         self.is_jumping = False
-        self.has_horse = True
+        self.has_horse = False # Default
         self.behind_cover = False
         
-        self.acc = 30  # Poor starting stats
-        self.luck = 30
         self.blinded = 0 # 0, 1, 2 eyes lost
         self.injuries = []
         self.dominant_hand = BodyPart.ARM_R
+
+    def sync_state(self):
+        """Syncs combat damage back to persistent player state"""
+        if self.player_state:
+            self.player_state.hp = self.hp
+            self.player_state.blood = self.blood
+            self.player_state.alive = self.alive
+            self.player_state.conscious = self.conscious
+            # TODO: Sync injuries permanently
 
     def get_distance_from_center(self):
         return abs(self.position)
@@ -98,9 +125,9 @@ class Combatant:
         return status
 
 class DuelEngineV2:
-    def __init__(self):
-        self.p1 = Combatant("PLAYER 1", -1) # Moves negative
-        self.p2 = Combatant("PLAYER 2", 1)  # Moves positive
+    def __init__(self, p1_combatant=None, p2_combatant=None):
+        self.p1 = p1_combatant if p1_combatant else Combatant("PLAYER 1", -1)
+        self.p2 = p2_combatant if p2_combatant else Combatant("PLAYER 2", 1)
         self.turn = 0
         self.log = []
 
@@ -262,9 +289,10 @@ class DuelEngineV2:
         
         # Movement
         if action == Action.PACE:
-            # Move away from center (honorable) or just away?
-            # "Pace moves away from center 1 space"
-            if actor.position >= 0:
+            # Move away from center
+            if actor.position == 0:
+                actor.position += actor.direction_multiplier
+            elif actor.position > 0:
                 actor.position += 1
             else:
                 actor.position -= 1
@@ -385,18 +413,88 @@ class DuelEngineV2:
             print(l)
         self.log = []
 
+    def render(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print("\n" + "="*60)
+        print(f"TURN {self.turn}")
+        print("="*60 + "\n")
+        
+        # Arena Visualization
+        # Range -15 to +15 (31 chars)
+        arena = [" . "] * 31
+        center = 15
+        
+        # Draw Static Elements
+        arena[center] = " | "
+        arena[center - 13] = " H "
+        arena[center + 13] = " H "
+        
+        # Draw Players
+        p1_idx = center + self.p1.position
+        p2_idx = center + self.p2.position
+        
+        # P1 Symbol
+        p1_sym = "1"
+        if self.p1.orientation == Orientation.FACING_OPPONENT: p1_sym = "1>" if self.p1.direction_multiplier == 1 else "<1" # Wait, P1 is -1 (Left) so facing opp (Right) is >
+        else: p1_sym = "<1" if self.p1.direction_multiplier == 1 else "1>" # Facing away
+        
+        # Fix P1 Orientation Visuals (P1 is Left/-1, P2 is Right/+1)
+        # If P1 faces Opponent (Right), he looks >
+        # If P1 faces Away (Left), he looks <
+        if self.p1.direction_multiplier == -1:
+            p1_sym = "1>" if self.p1.orientation == Orientation.FACING_OPPONENT else "<1"
+        else:
+            p1_sym = "<1" if self.p1.orientation == Orientation.FACING_OPPONENT else "1>"
+
+        if self.p1.is_ducking: p1_sym = p1_sym.replace("1", "1_")
+        if self.p1.is_jumping: p1_sym = p1_sym.replace("1", "^1")
+        if not self.p1.conscious: p1_sym = "_1_"
+        
+        # P2 Symbol
+        if self.p2.direction_multiplier == 1: # Right side
+            p2_sym = "<2" if self.p2.orientation == Orientation.FACING_OPPONENT else "2>"
+        else:
+            p2_sym = "2>" if self.p2.orientation == Orientation.FACING_OPPONENT else "<2"
+
+        if self.p2.is_ducking: p2_sym = p2_sym.replace("2", "2_")
+        if self.p2.is_jumping: p2_sym = p2_sym.replace("2", "^2")
+        if not self.p2.conscious: p2_sym = "_2_"
+
+        # Place on Grid
+        if 0 <= p1_idx < 31: arena[p1_idx] = f"{p1_sym:^3}"
+        if 0 <= p2_idx < 31: 
+            if p1_idx == p2_idx:
+                arena[p2_idx] = " X " # Collision/Melee
+            else:
+                arena[p2_idx] = f"{p2_sym:^3}"
+                
+        print("".join(arena))
+        print(" " * (center*3) + "^ (0)")
+        
+        # Print Stats
+        print("\n" + "-"*60)
+        print(f"{self.p1.name:<30} | {self.p2.name:<30}")
+        print(f"HP: {self.p1.hp:<3}/{self.p1.max_hp:<3} Blood: {self.p1.blood:<2}      | HP: {self.p2.hp:<3}/{self.p2.max_hp:<3} Blood: {self.p2.blood:<2}")
+        print(f"Wpn: {self.p1.weapon_state.value:<10} Ammo: {self.p1.ammo}      | Wpn: {self.p2.weapon_state.value:<10} Ammo: {self.p2.ammo}")
+        print("-" * 60)
+        
+        # Print Log
+        self.print_log()
+
 # --- SIMULATION SCENARIOS ---
 
 def run_simulation(scenario_name, p1_ai, p2_ai):
     print(f"\n\n>>> SIMULATION: {scenario_name} <<<")
+    input("Press Enter to start...")
     engine = DuelEngineV2()
     
     # Run for max 20 turns
     for i in range(20):
         if not engine.p1.alive or not engine.p2.alive:
             break
-        if not engine.p1.conscious and not engine.p2.conscious:
-            break
+        # if not engine.p1.conscious and not engine.p2.conscious:
+        #    break 
+        # Keep running even if unconscious to see if they get beaten up (as per user request)
             
         # Get actions from AI functions
         # If AI is a list, use index. If function, call it.
@@ -415,9 +513,10 @@ def run_simulation(scenario_name, p1_ai, p2_ai):
         if not engine.p2.conscious: a2 = Action.WAIT
         
         engine.run_turn(a1, a2)
-        engine.print_log()
-        print(engine.p1.get_status())
-        print(engine.p2.get_status())
+        engine.render()
+        time.sleep(1.5)
+        
+    print("\nSIMULATION ENDED")
 
 # AI Behaviors
 def ai_honorable(me, opp, engine):
