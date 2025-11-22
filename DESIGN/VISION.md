@@ -23,20 +23,52 @@ The random targeting system is a feature, not a bug. Missed shots have consequen
 - **Emergent Feuds**: The owner of a killed horse may hunt you down later.
 - **Legal Trouble**: "Reckless endangerment" can lead to jail time even if you win the duel.
 
-## The Meta-Loop: Sheriff vs. Outlaw
+## The Economy of Violence
+Money flows through blood and survival.
+- **Income**:
+  - **Bounties**: Hunt wanted men (requires Horse).
+  - **Sheriff Salary**: Steady income, but you become a target.
+  - **Dueling Wagers**: High risk, high reward.
+  - **Bank Robberies**: The big score, but brings permanent heat.
+- **Expenses**:
+  - **Doctor Bills**: Proportional to injury severity.
+  - **Horses**: Essential for multi-town play and survival.
+  - **Bail/Fines**: The cost of getting caught or causing collateral damage.
 
-### The Sheriff Path
-- **Enforce the Rules**: Penalize early draws.
-- **Judgment**: Decide who rots in jail and who hangs.
-- **Corruption**: Take bribes to look the other way.
-- **Risk**: High profile target for every aspiring gunslinger.
+## Tactical Injury System
+Injuries are not just HP loss; they define your limitations.
+- **Leg Wound**: Movement penalty. Cannot flee banks or chase bounties.
+- **Arm Wound**: Accuracy penalty. Slower reload times.
+- **Eye Loss**: Permanent perception and accuracy reduction.
+- **Critical Wounds**: Massive recovery time and cost (bleeding cash at the Doctor's).
 
-### The Outlaw Path
-- **Robberies**:
-  - **Solo**: High risk, requires a horse for escape.
-  - **Gang**: Recruit NPCs (requires Low Honor/Infamy).
-  - **Heists**: Coach and Train robberies (requires horses for the whole crew).
-- **Fugitive Life**: Flee town, start fresh with a bounty, be hunted by lawmen from previous towns.
+## The Horse: The Pivot Point
+The horse is the key to the open world.
+- **No Horse**: Trapped in the current town.
+- **Horse**: Access to other towns, ability to flee reputation, chase targets.
+- **Dead Horse**: You are vulnerable and stuck until you can afford a replacement.
+
+## Multi-Town Roguelike Structure
+The world is a collection of towns, each with its own laws and seed.
+- **Town Types**:
+  - **Civilized**: Strict laws, harsh penalties, high security.
+  - **Lawless**: No sheriff, pure chaos, high danger.
+- **Reputation Travel**: Wanted posters spread. Sheriffs telegraph warnings.
+- **The Run**: The game continues until you are too injured, too broke, or too wanted to go on. Then, a new seed, a new character.
+
+## Roles & Playstyles
+
+### The Sheriff
+- **Stationary**: Set up shop in one town.
+- **Duty**: Enforce laws or accept bribes.
+- **Target**: Face challengers seeking your badge.
+- **Loss Condition**: Leave town and you lose the badge.
+
+### The Outlaw
+- **Mobile**: Rob banks, flee on horseback.
+- **Hunted**: Sheriffs from previous towns track you.
+- **Gang**: Recruit NPCs to aid in heists.
+- **Risk**: Cannot settle; must keep moving.
 
 ## Progression & "No Game Over"
 Death is rare; consequences are frequent.
