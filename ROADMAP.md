@@ -39,4 +39,16 @@
 
 ## Phase 5: Procedural World
 - [ ] **Town Generation**: Random names, economy modifiers, law levels.
+- [ ] **Town States**: Implement Lawful, Corrupt, Lawless, Vigilante states.
 - [ ] **NPC Generation**: Random duelists/brawlers with unique stats.
+
+## Phase 6: The Living World (Advanced)
+- [ ] **The National List**:
+    - Pool of persistent NPCs (Outlaws, Bounty Hunters).
+    - Migration logic (NPCs moving between towns).
+- [ ] **Volatile Law**:
+    - Sheriff/Deputy slots that can be filled or emptied.
+    - Consequences of "No Sheriff" (Crime wave).
+- [ ] **Permadeath Options**:
+    - "New Character, Same World" logic.
+    - "Full Reset" logic.

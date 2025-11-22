@@ -56,6 +56,35 @@ The world is a collection of towns, each with its own laws and seed.
 - **Reputation Travel**: Wanted posters spread. Sheriffs telegraph warnings.
 - **The Run**: The game continues until you are too injured, too broke, or too wanted to go on. Then, a new seed, a new character.
 
+## The Living World
+The world does not wait for the player.
+- **The National List**: A persistent pool of named NPCs (Outlaws, Bounty Hunters, Duelists) with their own stats and agendas.
+  - They migrate between towns based on "Heat" and opportunity.
+  - They compete with the player: An NPC might kill your bounty target before you get there.
+  - They hunt the player: If you are wanted, famous bounty hunters will track you down.
+- **Volatile Law**: The Sheriff slot is not static.
+  - **Sheriff**: Can be Player, NPC, or Empty. They can die, quit, or be run out of town.
+  - **Deputy**: Might step up, flee, or challenge the killer of the previous Sheriff.
+  - **Vacuum**: No Sheriff = Outlaw Magnet. Criminals flock to lawless towns.
+
+## Emergent Town States
+Towns evolve based on who is in charge (or who isn't).
+- **Lawful**: Sheriff + Deputy. Low crime, high fines, safe but strict.
+- **Transitional**: New Sheriff (Player/NPC). Uncertain loyalty.
+- **Corrupt**: Sheriff takes bribes, ignores crimes.
+- **Lawless**: No law. High danger, high opportunity for outlaws.
+- **Vigilante**: Citizens enforce their own justice (Lynch mobs).
+
+## The Player is Just Another Piece
+You are not the protagonist; you are a survivor.
+- **Reputation Attraction**:
+  - **High Bounty**: Attracts elite NPC bounty hunters.
+  - **High Honor**: Lawmen respect you; offers for Deputy jobs.
+  - **Low Honor**: Outlaws seek you for gangs or grudge matches.
+- **Persistence**:
+  - **Same World**: If you die, you can reroll a new character in the same world. Your old character's corpse is in the cemetery, and their actions (and the chaos they caused) remain.
+  - **Full Reset**: Generate a completely new world seed.
+
 ## Roles & Playstyles
 
 ### The Sheriff
