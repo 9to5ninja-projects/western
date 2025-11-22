@@ -17,9 +17,16 @@ A text-based simulation engine for western duels and cantina brawls.
 
 ### Meta-Game & Progression
 - **Persistent World**: Track cash, honor, reputation, and bounties across days.
+- **Living World Simulation**: NPCs move between towns, commit crimes, and generate rumors.
 - **Town Hub**: Visit locations like the Cantina, Doctor, and Sheriff.
 - **Social Filter**: Honor determines how NPCs react to you.
 - **Consequences**: Collateral damage affects reputation; losing fights leads to medical bills or jail.
+
+### Dynamic Content
+- **Procedural Towns**: Towns have traits like "Lawless", "Rich", or "Fortified".
+- **Character Traits**: NPCs have traits (Sharpshooter, Drunkard) and quirks.
+- **Bounty Hunting**: Track down specific NPCs using rumors and wanted posters.
+- **Gang Management**: Recruit followers and plan bank heists.
 
 ## Running the Game
 

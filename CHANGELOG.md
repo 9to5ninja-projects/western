@@ -28,6 +28,28 @@ All notable changes to this project will be documented in this file.
     - Cheater vs Honorable.
     - Brawler vs Gunman.
 
+## [0.3.0] - 2025-11-22
+
+### Added
+- **Living World Simulation**:
+  - **Persistent NPCs**: Characters now have names, traits, and persist in the world.
+  - **Simulation Loop**: The world updates when the player sleeps or travels.
+  - **NPC Movement**: NPCs travel between towns.
+  - **Rumor System**: NPCs generate rumors based on their actions (crimes, hunting, etc.).
+  - **Population Control**: New NPCs spawn to replace the dead.
+- **Character Depth (`characters.py`)**:
+  - **Traits System**: NPCs have traits like `Sharpshooter`, `Brute`, `Drunkard`, `Safecracker`.
+  - **Quirks**: Flavor text for NPC personalities (e.g., "Twitches constantly").
+  - **Archetypes**: Distinct stats and gear for Cowboys, Outlaws, Sheriffs, etc.
+- **Expanded Economy & Meta**:
+  - **Town Traits**: Towns have tags like `Rich`, `Poor`, `Lawless`, `Fortified` affecting prices and danger.
+  - **Bounty Hunting**: Sheriff's office lists active bounties based on world simulation.
+  - **Gang Recruitment**: Recruit NPCs with specific traits for your gang.
+  - **Bank Robbery**: Plan heists on specific towns, with difficulty based on town traits.
+- **Travel System**:
+  - Travel between towns takes time (Weeks).
+  - Random road events (Strangers, Duels).
+
 ## [0.2.0] - 2025-11-22
 
 ### Added

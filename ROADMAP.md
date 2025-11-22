@@ -6,44 +6,44 @@
 - [x] **Basic UI**: Persistent HUD, Town Menu, ASCII Visualizer.
 - [x] **Game State**: Persistent player stats (Cash, Honor, Injuries).
 
-## Phase 2: The Horse & Mobility (Next)
-- [ ] **Horse Ownership**: Buying/Selling horses at Stables.
-- [ ] **Travel System**: Moving between towns (requires Horse).
-- [ ] **Flee Mechanic**: 
+## Phase 2: The Horse & Mobility (Completed)
+- [x] **Horse Ownership**: Buying/Selling horses at Stables.
+- [x] **Travel System**: Moving between towns (requires Horse).
+- [x] **Flee Mechanic**: 
     - Implement "13 paces" rule in Duel Engine.
     - Leg injuries preventing flee.
     - Horse requirement for escaping town after crimes.
 
-## Phase 3: Economy & Injuries
+## Phase 3: Economy & Injuries (Partially Completed)
 - [ ] **Tactical Injuries**:
     - Implement stat penalties for specific injuries (Leg=Speed, Arm=Acc).
     - Persistent injury tracking in `PlayerState`.
-- [ ] **Doctor**:
+- [x] **Doctor**:
     - Dynamic pricing based on injury severity.
     - Recovery time (Time skip).
-- [ ] **Economy**:
+- [x] **Economy**:
     - General Store (Ammo, Gun upgrades).
     - Stables (Work for cash).
     - Bank (Deposit/Rob).
 
-## Phase 4: Law & Order (The Meta)
-- [ ] **Honor System**:
+## Phase 4: Law & Order (The Meta) (Completed)
+- [x] **Honor System**:
     - Sheriff interactions based on Honor.
     - Wanted levels and Bounties.
-- [ ] **Sheriff Role**:
+- [x] **Sheriff Role**:
     - Job board / Bounties.
     - Jail system (Bail/Breakout).
-- [ ] **Outlaw Role**:
+- [x] **Outlaw Role**:
     - Bank Robbery minigame.
     - Gang recruitment at Cantina.
 
-## Phase 5: Procedural World
-- [ ] **Town Generation**: Random names, economy modifiers, law levels.
-- [ ] **Town States**: Implement Lawful, Corrupt, Lawless, Vigilante states.
-- [ ] **NPC Generation**: Random duelists/brawlers with unique stats.
+## Phase 5: Procedural World (Completed)
+- [x] **Town Generation**: Random names, economy modifiers, law levels.
+- [x] **Town States**: Implement Lawful, Corrupt, Lawless, Vigilante states.
+- [x] **NPC Generation**: Random duelists/brawlers with unique stats.
 
-## Phase 6: The Living World (Advanced)
-- [ ] **The National List**:
+## Phase 6: The Living World (In Progress)
+- [x] **The National List**:
     - Pool of persistent NPCs (Outlaws, Bounty Hunters).
     - Migration logic (NPCs moving between towns).
 - [ ] **Volatile Law**:

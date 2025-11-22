@@ -176,7 +176,18 @@ class DuelEngineV2:
         # Roll
         roll = random.randint(0, 100)
         if roll > hit_chance:
-            return BodyPart.MISS, 0, "Miss!"
+            # Miss Flavor
+            miss_msgs = [
+                "Missed by a mile!",
+                "Shot kicks up dust.",
+                "Bullet whizzes past ear.",
+                "Shot hits a spittoon. *DING*",
+                "Shot shatters a whiskey bottle.",
+                "Bullet hits a passing chicken.",
+                "Shot knocks a hat off a bystander."
+            ]
+            flavor = random.choice(miss_msgs)
+            return BodyPart.MISS, 0, f"Miss! {flavor}"
 
         # 5. Determine Hit Location
         # Simplified scatter based on aim
@@ -200,7 +211,12 @@ class DuelEngineV2:
         
         # Specific Part Effects
         if hit_part == BodyPart.HEAD:
-            if random.random() < 0.4: # 40% Fatal Headshot
+            # Check for Hat Shot (Near Miss or Glancing Blow)
+            if random.random() < 0.3 and target.player_state and target.player_state.hat:
+                target.player_state.hat.holes += 1
+                msg += f" Bullet punches a hole in their {target.player_state.hat.name}!"
+                # No extra damage, just hat damage
+            elif random.random() < 0.4: # 40% Fatal Headshot
                 damage_blood = 12
                 msg += " FATAL HEADSHOT!"
             else:
