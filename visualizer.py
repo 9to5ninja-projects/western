@@ -278,19 +278,25 @@ class SceneRenderer:
                 ty = SCENE_HEIGHT + 50
                 draw.text((20, ty), f"{town.name.upper()}", fill="white", font=self.font)
                 ty += 20
-                draw.text((20, ty), f"Heat: {town.heat}/100", fill="red" if town.heat > 50 else "green", font=self.font)
-                ty += 20
-                draw.text((20, ty), f"Law: {town.lawfulness}", fill="cyan", font=self.font)
+                
+                heat = getattr(town, "heat", 0)
+                draw.text((20, ty), f"Heat: {heat}/100", fill="red" if heat > 50 else "green", font=self.font)
                 ty += 20
                 
-                mayor_name = town.mayor.name if town.mayor else "None"
-                mayor_status = town.mayor_status
+                law = getattr(town, "lawfulness", "??")
+                draw.text((20, ty), f"Law: {law}", fill="cyan", font=self.font)
+                ty += 20
+                
+                mayor = getattr(town, "mayor", None)
+                mayor_name = mayor.name if mayor else "None"
+                mayor_status = getattr(town, "mayor_status", "Unknown")
                 draw.text((20, ty), f"Mayor: {mayor_name}", fill="white", font=self.font)
                 ty += 20
                 draw.text((20, ty), f"Status: {mayor_status}", fill="gray", font=self.font)
                 ty += 20
                 
-                sheriff_name = town.sheriff.name if town.sheriff else "None"
+                sheriff = getattr(town, "sheriff", None)
+                sheriff_name = sheriff.name if sheriff else "None"
                 draw.text((20, ty), f"Sheriff: {sheriff_name}", fill="white", font=self.font)
                 ty += 20
                 

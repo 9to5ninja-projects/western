@@ -74,6 +74,31 @@ def main_menu():
         elif choice == "2" and save_exists():
             player, world = load_game()
             if player and world:
+                # MIGRATION: Fix old saves
+                from characters import NPC
+                for town in world.towns.values():
+                    if not hasattr(town, "mayor") or town.mayor is None:
+                        town.mayor = NPC("Mayor")
+                        town.mayor.location = town.name
+                        if town.mayor not in world.active_npcs:
+                            world.active_npcs.append(town.mayor)
+                            
+                    if not hasattr(town, "sheriff") or town.sheriff is None:
+                        town.sheriff = NPC("Sheriff")
+                        town.sheriff.location = town.name
+                        if town.sheriff not in world.active_npcs:
+                            world.active_npcs.append(town.sheriff)
+                            
+                    if not hasattr(town, "mayor_status"): town.mayor_status = "Alive"
+                    if not hasattr(town, "heat"): town.heat = 0
+                    if not hasattr(town, "base_lawfulness"): town.base_lawfulness = 50
+                    if not hasattr(town, "player_is_mayor"): town.player_is_mayor = False
+                    if not hasattr(town, "influence"): town.influence = 0
+                    if not hasattr(town, "treasury"): town.treasury = 1000.0
+                    if not hasattr(town, "rackets"): town.rackets = []
+                    if not hasattr(town, "jail"): town.jail = []
+                    if not hasattr(town, "gang_control"): town.gang_control = False
+
                 print(f"Welcome back, {player.name}.")
                 time.sleep(1)
                 game_loop(player, world)
