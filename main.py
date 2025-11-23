@@ -1291,7 +1291,7 @@ def visit_stables(player, world):
             if player.brawl_def < 10:
                 player.brawl_def += 1
                 # print("You feel tougher. (+1 Brawl Def)")
-                log_lines.append("You feel tougher. (+1 Brawl Def)")
+                log_lines.append("You feel tougher. (+1 Brawl Def, +5 Max HP)")
             else:
                 # print("You maintain your toughness.")
                 log_lines.append("You maintain your toughness.")
