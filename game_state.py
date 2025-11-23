@@ -128,6 +128,7 @@ class PlayerState:
         self.duel_wins = 0
         self.duel_losses = 0
         self.brawler_rep = 0 # Hidden stat for brawling sidequest
+        self.charm_mod = 0 # Modifier for charm (e.g. from events)
 
     @property
     def max_hp(self):
@@ -136,7 +137,8 @@ class PlayerState:
 
     @property
     def charm(self):
-        return self.hat.charm if self.hat else 0
+        base = self.hat.charm if self.hat else 0
+        return max(0, base + self.charm_mod)
 
     def get_acc(self):
         # Base + Weapon + Injuries

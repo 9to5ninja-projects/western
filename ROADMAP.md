@@ -94,4 +94,15 @@
 - [ ] **Asset Pipeline**:
     - Integration of pixel art assets.
 
+## Phase 10: Narrative Reactivity (New)
+- [ ] **Milestone Events**:
+    - **Infamy**: High bounty attracts US Marshals (Elite Hunters).
+    - **Fame**: High Honor attracts "The Kid" (Rival Duelist seeking glory).
+    - **Wealth**: High cash attracts thieves and muggers in towns.
+    - **Gang Power**: Large gangs attract US Cavalry patrols.
+- [ ] **Nemesis System**:
+    - Enemies who survive duels/shootouts can return with scars and vendettas.
+    - Family members of killed Sheriffs/Mayors seeking revenge.
+
+
 

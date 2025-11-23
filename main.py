@@ -11,6 +11,7 @@ from save_manager import save_game, load_game, save_exists
 from visualizer import renderer, Actor
 from game_utils import wait_for_user, options_to_buttons
 from combat_runner import start_brawl, start_duel, loot_screen, handle_crime
+from story_events import check_story_events
 
 # Initialize Visualizer
 # renderer = SceneRenderer() # Use global instance from visualizer.py
@@ -130,6 +131,7 @@ class GameController:
             if not hasattr(self.player, "luck_base"): self.player.luck_base = 30
             if not hasattr(self.player, "stables_training_counts"): self.player.stables_training_counts = {}
             if not hasattr(self.player, "drunk_counter"): self.player.drunk_counter = 0
+            if not hasattr(self.player, "charm_mod"): self.player.charm_mod = 0
             print(f"Welcome back, {self.player.name}.")
             time.sleep(1)
             self.state = "TOWN_HUB"
@@ -401,6 +403,8 @@ def travel_menu(player, world):
                 world.town_name = dest
                 wait_for_user([f"Arrived in {dest}."], player=player)
                 player.drunk_counter = 0 # Sober up after travel
+                
+                check_story_events(player, world)
                 break
         except ValueError:
             pass
@@ -890,6 +894,9 @@ def sleep(player, world):
                 update_world_simulation(world)
                 process_healing(player)
                 
+                # Story Events
+                check_story_events(player, world)
+                
                 renderer.render(log_text=["You rested well.", "HP and Blood recovered."], player=player)
                 wait_for_user()
                 
@@ -1061,6 +1068,8 @@ def visit_stables(player, world):
             # print("You earned $2.00. People respect honest work. (+1 Honor)")
             log_lines.append("You earned $2.00. (+1 Honor)")
             
+            check_story_events(player, world)
+            
             wait_for_user(log_lines, player=player)
             # time.sleep(1.5)
             
@@ -1091,6 +1100,8 @@ def visit_stables(player, world):
             world.reduce_heat(5)
             # print("You earned $3.00. (+1 Honor)")
             log_lines.append("You earned $3.00. (+1 Honor)")
+            
+            check_story_events(player, world)
             
             wait_for_user(log_lines, player=player)
             # time.sleep(1.5)
@@ -1437,6 +1448,8 @@ def patrol_town(player, world):
         
     player.cash += 5.00
     world.reduce_heat(10) # Deputies lower town heat
+    
+    check_story_events(player, world)
     
     # Random Event
     roll = random.random()
