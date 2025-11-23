@@ -163,7 +163,7 @@ class SceneRenderer:
             draw.text((5, 40), actor.name[:4], fill="white", font=self.font)
             return img
 
-    def render(self, stats_text=None, log_text=None, buttons=None, player=None):
+    def render(self, stats_text=None, log_text=None, buttons=None, player=None, world=None):
         """Composite the final frame"""
         # 1. Create Base Canvas
         canvas = Image.new("RGB", (SCREEN_WIDTH, SCREEN_HEIGHT), (20, 20, 20))
@@ -261,17 +261,60 @@ class SceneRenderer:
                 draw.text((SCENE_WIDTH + 20, y_off), line, fill="white", font=self.font)
                 y_off += 20
 
-        # Bottom Panel (Log)
-        # Fill background to prevent ghosting/overlap if canvas wasn't cleared (it is, but just in case)
-        draw.rectangle([10, SCENE_HEIGHT + 10, SCENE_WIDTH, SCREEN_HEIGHT - 10], fill=(20, 20, 20), outline="white")
-        draw.text((20, SCENE_HEIGHT + 20), "LOG", fill="yellow", font=self.font)
+        # Bottom Panel (Log & Town Info)
+        log_x = 20
+        log_width = SCENE_WIDTH - 20
+        
+        if world:
+            # Split Bottom Panel: Left for Town Info, Right for Log
+            town_info_width = 250
+            
+            # Draw Town Info Box
+            draw.rectangle([10, SCENE_HEIGHT + 10, 10 + town_info_width, SCREEN_HEIGHT - 10], outline="white")
+            draw.text((20, SCENE_HEIGHT + 20), "TOWN INFO", fill="yellow", font=self.font)
+            
+            town = world.get_town()
+            if town:
+                ty = SCENE_HEIGHT + 50
+                draw.text((20, ty), f"{town.name.upper()}", fill="white", font=self.font)
+                ty += 20
+                draw.text((20, ty), f"Heat: {town.heat}/100", fill="red" if town.heat > 50 else "green", font=self.font)
+                ty += 20
+                draw.text((20, ty), f"Law: {town.lawfulness}", fill="cyan", font=self.font)
+                ty += 20
+                
+                mayor_name = town.mayor.name if town.mayor else "None"
+                mayor_status = town.mayor_status
+                draw.text((20, ty), f"Mayor: {mayor_name}", fill="white", font=self.font)
+                ty += 20
+                draw.text((20, ty), f"Status: {mayor_status}", fill="gray", font=self.font)
+                ty += 20
+                
+                sheriff_name = town.sheriff.name if town.sheriff else "None"
+                draw.text((20, ty), f"Sheriff: {sheriff_name}", fill="white", font=self.font)
+                ty += 20
+                
+                traits = ", ".join(town.traits[:2])
+                draw.text((20, ty), f"Traits: {traits}", fill="gray", font=self.font)
+
+            # Adjust Log Area
+            log_x = 10 + town_info_width + 10
+            log_width = SCENE_WIDTH - log_x
+            
+            draw.rectangle([log_x - 5, SCENE_HEIGHT + 10, SCENE_WIDTH, SCREEN_HEIGHT - 10], outline="white")
+        else:
+            # Full width Log
+            draw.rectangle([10, SCENE_HEIGHT + 10, SCENE_WIDTH, SCREEN_HEIGHT - 10], fill=(20, 20, 20), outline="white")
+
+        draw.text((log_x, SCENE_HEIGHT + 20), "LOG", fill="yellow", font=self.font)
         if log_text:
             y_off = SCENE_HEIGHT + 50
             # Show last 8 lines
             for line in log_text[-8:]:
                 # Simple truncation to prevent overflow
-                if len(line) > 80: line = line[:77] + "..."
-                draw.text((20, y_off), line, fill="white", font=self.font)
+                max_chars = int(log_width / 8) # Approx char width
+                if len(line) > max_chars: line = line[:max_chars-3] + "..."
+                draw.text((log_x, y_off), line, fill="white", font=self.font)
                 y_off += 20
 
         # Bottom Right (Buttons)
@@ -285,15 +328,26 @@ class SceneRenderer:
             draw.rectangle([btn_x, btn_y, btn_x + btn_w, btn_y + btn_h], outline="white")
             draw.text((btn_x + 10, btn_y + 10), "ACTIONS", fill="yellow", font=self.font)
             
-            y_off = btn_y + 40
-            for btn in buttons:
-                # btn = {"label": "Attack", "key": "1"}
-                label = f"[{btn.get('key', '?')}] {btn.get('label', 'Action')}"
+            # 2-Column Layout
+            col_w = (btn_w - 15) / 2
+            start_y = btn_y + 40
+            
+            for i, btn in enumerate(buttons):
+                col = i % 2
+                row = i // 2
                 
-                # Draw button background
-                draw.rectangle([btn_x + 5, y_off, btn_x + btn_w - 5, y_off + 25], fill=(50, 50, 50), outline="white")
-                draw.text((btn_x + 10, y_off + 5), label, fill="white", font=self.font)
-                y_off += 30
+                bx = btn_x + 5 + (col * (col_w + 5))
+                by = start_y + (row * 30)
+                
+                # Check bounds
+                if by + 25 > btn_y + btn_h: break 
+                
+                label = f"[{btn.get('key', '?')}] {btn.get('label', 'Action')}"
+                # Truncate label if too long for column
+                if len(label) > 18: label = label[:16] + ".."
+                
+                draw.rectangle([bx, by, bx + col_w, by + 25], fill=(50, 50, 50), outline="white")
+                draw.text((bx + 5, by + 5), label, fill="white", font=self.font)
 
         # Update Window if it exists
         if self.window:

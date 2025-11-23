@@ -163,24 +163,6 @@ def game_loop(player, world):
         # Update HUD with Visuals
         render_hud(player, world)
         
-        # Define Buttons for Town Menu
-        town_buttons = [
-            {"label": "Cantina", "key": "1"},
-            {"label": "Stables", "key": "2"},
-            {"label": "Store", "key": "3"},
-            {"label": "Sheriff", "key": "4"},
-            {"label": "Doctor", "key": "5"},
-            {"label": "Rest", "key": "6"},
-            {"label": "Travel", "key": "7"},
-            {"label": "Quit", "key": "Q"}
-        ]
-        
-        renderer.render(
-            player=player,
-            log_text=[f"Day {world.week}", f"Location: {player.location}"],
-            buttons=town_buttons
-        )
-        
         # Town Menu
         if player.location == "Wilderness Camp":
             visit_camp(player, world)
@@ -207,6 +189,16 @@ def game_loop(player, world):
         # Mayor Option
         options["8"] = "Town Hall (Mayor)"
         options["9"] = "Bank (Deposit/Cash)"
+        
+        # Generate Buttons from Options
+        town_buttons = options_to_buttons(options)
+        
+        renderer.render(
+            player=player,
+            world=world,
+            log_text=[f"Day {world.week}", f"Location: {player.location}"],
+            buttons=town_buttons
+        )
         
         choice = get_menu_choice(options)
         
