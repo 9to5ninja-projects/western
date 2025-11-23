@@ -80,4 +80,18 @@
     - Background simulation (Robberies, Shootouts, Recruitment).
     - Interactions (Ambushes, Bounties, Cantina).
 
+## Phase 9: UI & Presentation (In Progress)
+- [x] **Visual Engine Foundation**:
+    - Scene Renderer (Pillow-based).
+    - Asset directory structure.
+- [ ] **Menu Integration**:
+    - Title Screen.
+    - Town Navigation (Visual backgrounds).
+    - Shop Interfaces.
+- [ ] **Combat Visualization**:
+    - Duel scene rendering.
+    - Shootout scene rendering.
+- [ ] **Asset Pipeline**:
+    - Integration of pixel art assets.
+
 

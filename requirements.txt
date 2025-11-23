@@ -1,2 +1,2 @@
-# No external dependencies required.
-# The project uses only the Python Standard Library.
+Pillow
+
