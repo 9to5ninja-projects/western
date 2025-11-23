@@ -109,6 +109,7 @@ def main_menu():
                 if not hasattr(player, "gang"): player.gang = []
                 if not hasattr(player, "dominant_hand"): player.dominant_hand = "right"
                 if not hasattr(player, "luck_base"): player.luck_base = 30
+                if not hasattr(player, "stables_training_counts"): player.stables_training_counts = {}
 
                 print(f"Welcome back, {player.name}.")
                 time.sleep(1)
@@ -468,12 +469,10 @@ def visit_cantina(player, world):
         if choice == "1":
             if player.cash >= 0.50:
                 player.cash -= 0.50
-                print("\nYou down the whiskey. It burns.")
                 player.hp = min(player.max_hp, player.hp + 5)
-                time.sleep(1)
+                wait_for_user(["You down the whiskey.", "It burns. (+5 HP)"], player=player)
             else:
-                print("\nBartender: 'No money, no drink.'")
-                time.sleep(1)
+                wait_for_user(["Bartender: 'No money, no drink.'"], player=player)
                 
         elif choice == "2":
             # print("\n=== RUMORS ===")
@@ -1311,13 +1310,18 @@ def visit_stables(player, world):
             # print("\nYou spend a week hauling heavy bales of hay.")
             log_lines = ["You spend a week hauling heavy bales of hay."]
             player.cash += 2.00
-            if player.brawl_atk < 10:
+            
+            # Training Cap Check
+            t_name = world.town_name
+            count = player.stables_training_counts.get(t_name, 0)
+            
+            if count < 10:
                 player.brawl_atk += 1
-                # print("You feel stronger. (+1 Brawl Atk)")
+                player.stables_training_counts[t_name] = count + 1
                 log_lines.append("You feel stronger. (+1 Brawl Atk)")
             else:
-                # print("You maintain your strength.")
-                log_lines.append("You maintain your strength.")
+                log_lines.append("You have learned all you can here.")
+                log_lines.append("(Training limit reached for this town)")
                 
             player.honor += 1
             world.week += 1
@@ -1336,13 +1340,18 @@ def visit_stables(player, world):
             # print("\nYou spend a week getting thrown by wild mustangs.")
             log_lines = ["You spend a week getting thrown by wild mustangs."]
             player.cash += 3.00
-            if player.brawl_def < 10:
+            
+            # Training Cap Check
+            t_name = world.town_name
+            count = player.stables_training_counts.get(t_name, 0)
+            
+            if count < 10:
                 player.brawl_def += 1
-                # print("You feel tougher. (+1 Brawl Def)")
+                player.stables_training_counts[t_name] = count + 1
                 log_lines.append("You feel tougher. (+1 Brawl Def, +5 Max HP)")
             else:
-                # print("You maintain your toughness.")
-                log_lines.append("You maintain your toughness.")
+                log_lines.append("You have learned all you can here.")
+                log_lines.append("(Training limit reached for this town)")
                 
             player.honor += 1
             world.week += 1

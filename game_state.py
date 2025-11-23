@@ -115,6 +115,9 @@ class PlayerState:
         
         # Healing
         self.healing_injuries = {} # {injury_name: weeks_remaining}
+        
+        # Training Caps
+        self.stables_training_counts = {} # {town_name: count}
 
     @property
     def max_hp(self):

@@ -99,10 +99,12 @@ class NPC:
             self.traits.append(random.choice(possible_traits))
             
         # Combat Stats
-        self.brawl_atk = 5 + data["skill"]
-        self.brawl_def = 5 + data["skill"]
-        self.acc = 30 + (data["skill"] * 5)
-        self.spd = 30 + (data["skill"] * 5)
+        # Variance added for "diverse power"
+        variance = random.randint(-2, 2)
+        self.brawl_atk = 5 + data["skill"] + variance
+        self.brawl_def = 5 + data["skill"] + variance
+        self.acc = 30 + (data["skill"] * 5) + (variance * 2)
+        self.spd = 30 + (data["skill"] * 5) + (variance * 2)
         self.hp = 50 + (self.brawl_def * 5)
         
         # Apply Traits
