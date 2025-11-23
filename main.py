@@ -907,6 +907,10 @@ def visit_sheriff(player, world):
             options["3"] = "Apply to be Deputy"
         else:
             options["3"] = "Report for Duty (Patrol)"
+            
+        town = world.get_town()
+        if town.jail:
+            options["4"] = "Bail Out Gang Member"
         
         choice = get_menu_choice(options)
         
@@ -954,6 +958,9 @@ def visit_sheriff(player, world):
                         time.sleep(1)
             else:
                 patrol_town(player, world)
+        
+        elif choice == "4":
+            bail_member(player, world)
                 
         elif choice == "B":
             break
@@ -1163,6 +1170,8 @@ def rob_bank(player, world):
             
     engine.render()
     
+    process_gang_casualties(player, world)
+    
     # Check Outcome
     enemies_alive = any(e.alive for e in guards)
     
@@ -1313,6 +1322,10 @@ def visit_mayor(player, world):
             if player.reputation > 80 and not player.is_gang_leader:
                 options["4"] = "Run for Mayor (Election)"
             
+            if player.is_gang_leader:
+                options["5"] = "Demand Protection (Racket)"
+                options["6"] = "Attempt Takeover (War)"
+            
             choice = get_menu_choice(options)
             
             if choice == "1":
@@ -1348,6 +1361,8 @@ def visit_mayor(player, world):
                     if not engine.run_turn(): break
                     time.sleep(1)
                 
+                process_gang_casualties(player, world)
+                
                 if player.alive:
                     print("The Mayor is dead.")
                     town.mayor_status = "Dead"
@@ -1365,6 +1380,12 @@ def visit_mayor(player, world):
                 else:
                     print("You lost the election.")
                 time.sleep(1)
+            
+            elif choice == "5":
+                demand_protection(player, world)
+                
+            elif choice == "6":
+                attempt_takeover(player, world)
                 
             elif choice == "B":
                 break
@@ -1448,6 +1469,153 @@ def visit_bank(player, world):
             
         elif choice == "B":
             break
+
+def demand_protection(player, world):
+    town = world.get_town()
+    print(f"\n=== DEMAND PROTECTION: {town.name} ===")
+    
+    if len(player.gang) < 2:
+        print("You need a gang to run a protection racket.")
+        time.sleep(1)
+        return
+
+    # Calculate Intimidation
+    intimidation = (len(player.gang) * 10) + player.reputation
+    if player.is_gang_leader: intimidation += 20
+    
+    print(f"Gang Intimidation: {intimidation}")
+    print(f"Town Lawfulness: {town.lawfulness}")
+    
+    if "Protection" in town.rackets:
+        print("You are already running protection here.")
+        time.sleep(1)
+        return
+
+    if intimidation > town.lawfulness:
+        print("The Mayor crumbles under your threat.")
+        print("'Fine! We'll pay! Just keep the violence down.'")
+        town.rackets.append("Protection")
+        player.reputation += 5
+        player.honor -= 10
+        print("Racket Established: Protection (Weekly Income)")
+    else:
+        print("The Mayor stands firm.")
+        print("'We don't bow to thugs like you! Sheriff!'")
+        world.add_heat(30)
+        start_brawl(player, world, NPC("Sheriff"))
+
+def attempt_takeover(player, world):
+    town = world.get_town()
+    print(f"\n=== TOWN TAKEOVER: {town.name} ===")
+    
+    if len(player.gang) < 3:
+        print("You need a larger gang (3+) to take over a town.")
+        time.sleep(1)
+        return
+        
+    print("You are about to wage war for control of the streets.")
+    print("Goal: Push the battle line and eliminate resistance.")
+    
+    if input("Begin Attack? (Y/N): ").upper() != "Y":
+        return
+        
+    # Setup Teams
+    # Player Team: Player + Gang
+    player_team = [player] + player.gang
+    
+    # Enemy Team: Sheriff + Deputies + Armed Citizens
+    defenders = 3 + (town.lawfulness // 20)
+    if "Fortified" in town.traits: defenders += 2
+    
+    enemy_team = [NPC("Sheriff")] + [NPC("Cowboy") for _ in range(defenders)]
+    
+    print(f"Defenders: {len(enemy_team)}")
+    
+    engine = ShootoutEngine(player_team, enemy_team, mode="takeover")
+    
+    while True:
+        engine.render()
+        cont = engine.run_turn()
+        time.sleep(1.5)
+        if not cont:
+            break
+            
+    engine.render()
+    
+    process_gang_casualties(player, world)
+    
+    # Check Victory
+    # If player alive and enemies dead
+    enemies_alive = any(e.alive for e in enemy_team)
+    
+    if player.alive and not enemies_alive:
+        print("\nVICTORY! The town is yours!")
+        town.player_is_mayor = True
+        town.mayor_status = "Puppet"
+        town.gang_control = True # Anarchy/Gang Rule
+        town.rackets.append("Total Control")
+        player.reputation += 50
+        player.honor -= 50
+        
+        # Loot
+        loot = 500
+        if "Rich" in town.traits: loot = 1000
+        print(f"You seize the town treasury: ${loot}")
+        player.cash += loot
+        
+    elif player.alive:
+        print("\nThe attack failed! You retreat.")
+        world.add_heat(50)
+    else:
+        print("\nYou died in the street war.")
+
+def bail_member(player, world):
+    town = world.get_town()
+    print(f"\n=== TOWN JAIL: {town.name} ===")
+    
+    if not town.jail:
+        print("The cells are empty.")
+        time.sleep(1)
+        return
+        
+    print("Inmates:")
+    for i, member in enumerate(town.jail):
+        print(f"{i+1}. {member.name} (Bail: $50.00)")
+        
+    print("B. Back")
+    
+    choice = input("Choice: ").upper()
+    if choice == "B": return
+    
+    try:
+        idx = int(choice) - 1
+        if 0 <= idx < len(town.jail):
+            member = town.jail[idx]
+            if player.cash >= 50:
+                player.cash -= 50
+                town.jail.pop(idx)
+                player.gang.append(member)
+                print(f"You bailed out {member.name}.")
+            else:
+                print("Not enough cash.")
+    except: pass
+
+def process_gang_casualties(player, world):
+    town = world.get_town()
+    # Check for dead gang members
+    # We need to iterate a copy because we might remove them
+    for member in list(player.gang):
+        if not member.alive:
+            # 50% chance to be captured if in a town with a jail (Lawfulness > 0)
+            if town.lawfulness > 0 and random.random() < 0.5:
+                print(f"{member.name} was wounded and CAPTURED by the law!")
+                member.alive = True # They survive
+                member.hp = int(member.max_hp / 2) # Heal partially
+                town.jail.append(member)
+                player.gang.remove(member)
+            else:
+                print(f"{member.name} died in the shootout.")
+                player.gang.remove(member)
 
 if __name__ == '__main__':
     main_menu()

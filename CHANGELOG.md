@@ -168,3 +168,23 @@ All notable changes to this project will be documented in this file.
 - **Code Refactoring**:
   - `handle_death` function added to `main.py` to manage the post-mortem flow.
   - `new_game` updated to accept an optional `existing_world` parameter for legacy inheritance.
+
+## [0.10.0] - 2025-11-23
+
+### Added
+- **Territory Control Mechanics**:
+  - **Rackets**: Gang leaders can now "Demand Protection" from Mayors.
+    - Success depends on Gang Intimidation vs Town Lawfulness.
+    - Generates weekly income (placeholder).
+  - **Town Takeover (War)**:
+    - **Positional Warfare**: New `ShootoutEngine` mode where teams battle for territory control (0-100 scale).
+    - **Line Battle**: Players must push the battle line from 10 to 100 to seize the town.
+    - **New Action**: `[M]ove` allows combatants to advance, sacrificing cover for position.
+    - **Victory**: Eliminating defenders grants total control (Lawfulness = 0) and the town treasury.
+  - **Gang Jail System**:
+    - **Capture**: Gang members defeated in town shootouts have a 50% chance to be captured instead of killed.
+    - **Bail**: Players can bail out captured members at the Sheriff's Office ($50.00).
+- **Data Structure Updates**:
+  - **Town Class**: Now tracks `rackets`, `jail` population, and dynamic `lawfulness`.
+  - **Lawfulness**: Derived from town traits (Lawless=10, Poor=30, Rich=70, Fortified=90).
+

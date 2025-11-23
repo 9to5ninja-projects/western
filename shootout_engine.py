@@ -24,6 +24,10 @@ class ShootoutCombatant:
         self.alive = True
         self.cover_level = 0 # 0: None, 1: Light (25%), 2: Heavy (50%)
         self.ammo = 6
+        
+        # Position for Takeover Mode (0-100)
+        # Team 0 starts at 10, Team 1 starts at 90
+        self.position = 10 if team_id == 0 else 90
 
     def take_damage(self, amount):
         self.hp -= amount
@@ -35,7 +39,8 @@ class ShootoutCombatant:
                 self.source.alive = False # Kill NPC
 
 class ShootoutEngine:
-    def __init__(self, player_team, enemy_team):
+    def __init__(self, player_team, enemy_team, mode="standard"):
+        self.mode = mode # "standard" or "takeover"
         # Teams are lists of source objects (PlayerState or NPC)
         self.team_0 = [ShootoutCombatant(p, 0, is_player=(i==0 and p.name == player_team[0].name)) for i, p in enumerate(player_team)]
         self.team_1 = [ShootoutCombatant(e, 1) for e in enemy_team]
@@ -49,7 +54,7 @@ class ShootoutEngine:
 
     def render(self):
         os.system('cls' if os.name == 'nt' else 'clear')
-        print(f"\n=== SHOOTOUT TURN {self.turn} ===")
+        print(f"\n=== SHOOTOUT TURN {self.turn} [{self.mode.upper()}] ===")
         
         # Visualizer
         # Left Side (Team 0)       Right Side (Team 1)
@@ -67,7 +72,8 @@ class ShootoutEngine:
                 u = self.team_0[i]
                 status = "DEAD" if not u.alive else f"{u.hp}/{u.max_hp}"
                 cover = f"[{'='*u.cover_level}]" if u.alive else ""
-                l_str = f"{u.name[:15]:<15} {status:<8} {cover}"
+                pos_str = f"@{u.position}" if self.mode == "takeover" and u.alive else ""
+                l_str = f"{u.name[:15]:<15} {status:<8} {cover} {pos_str}"
             
             # Right
             r_str = ""
@@ -75,11 +81,23 @@ class ShootoutEngine:
                 u = self.team_1[i]
                 status = "DEAD" if not u.alive else f"{u.hp}/{u.max_hp}"
                 cover = f"[{'='*u.cover_level}]" if u.alive else ""
-                r_str = f"{cover} {status:>8} {u.name[:15]:>15}"
+                pos_str = f"@{u.position}" if self.mode == "takeover" and u.alive else ""
+                r_str = f"{pos_str} {cover} {status:>8} {u.name[:15]:>15}"
                 
             print(f"{l_str:<35} | {r_str:<35}")
             
         print("-" * 75)
+        if self.mode == "takeover":
+            # Draw a simple line visualizer
+            line = ["."] * 50
+            # Mark approximate positions
+            for u in self.team_0:
+                if u.alive: line[min(49, int(u.position/2))] = "P"
+            for u in self.team_1:
+                if u.alive: line[min(49, int(u.position/2))] = "E"
+            print(f"FIELD: [0] {''.join(line)} [100]")
+            print("-" * 75)
+
         for l in self.log[-5:]: # Show last 5 logs
             print(f"> {l}")
 
@@ -113,11 +131,23 @@ class ShootoutEngine:
     def player_turn(self, unit, enemies):
         print(f"\nYOUR TURN ({unit.name})")
         print(f"HP: {unit.hp} | Ammo: {unit.ammo} | Cover: {unit.cover_level}")
+        if self.mode == "takeover":
+            print(f"Position: {unit.position}/100")
+            
         print("Targets:")
         for i, e in enumerate(enemies):
-            print(f"{i+1}. {e.name} (HP: {e.hp}, Cover: {e.cover_level})")
+            dist_info = ""
+            if self.mode == "takeover":
+                dist = abs(unit.position - e.position)
+                dist_info = f" (Dist: {dist})"
+            print(f"{i+1}. {e.name} (HP: {e.hp}, Cover: {e.cover_level}){dist_info}")
             
-        print("Actions: [S]hoot, [C]over, [R]eload, [A]uto-Play Turn")
+        actions = "[S]hoot, [C]over, [R]eload"
+        if self.mode == "takeover":
+            actions += ", [M]ove"
+        actions += ", [A]uto-Play Turn"
+        
+        print(f"Actions: {actions}")
         
         while True:
             choice = input("> ").upper()
@@ -136,6 +166,13 @@ class ShootoutEngine:
                 unit.ammo = 6
                 self.log.append(f"{unit.name} reloads.")
                 break
+            elif choice == "M" and self.mode == "takeover":
+                # Move forward
+                move_dist = random.randint(10, 20)
+                unit.position = min(100, unit.position + move_dist)
+                unit.cover_level = 0 # Moving exposes you
+                self.log.append(f"{unit.name} advances to position {unit.position}!")
+                break
             elif choice == "A":
                 # Auto-play logic for player
                 self.ai_turn(unit, enemies)
@@ -148,6 +185,24 @@ class ShootoutEngine:
             unit.ammo = 6
             self.log.append(f"{unit.name} reloads.")
             return
+
+        # Takeover Logic: Advance if too far back
+        if self.mode == "takeover":
+            # Team 1 (Enemy) wants to go to 0. Team 0 (Player AI?) wants to go to 100.
+            target_pos = 0 if unit.team_id == 1 else 100
+            dist_to_goal = abs(unit.position - target_pos)
+            
+            # If healthy and far from goal, move
+            if unit.hp > unit.max_hp * 0.4 and dist_to_goal > 30:
+                if random.random() < 0.5: # 50% chance to move instead of shoot
+                    move_dist = random.randint(10, 20)
+                    if unit.team_id == 1:
+                        unit.position = max(0, unit.position - move_dist)
+                    else:
+                        unit.position = min(100, unit.position + move_dist)
+                    unit.cover_level = 0
+                    self.log.append(f"{unit.name} advances to position {unit.position}!")
+                    return
 
         # If exposed and hurt, take cover
         if unit.cover_level == 0 and unit.hp < unit.max_hp * 0.5:
@@ -169,6 +224,16 @@ class ShootoutEngine:
         # Hit Chance
         # Base Acc vs Base Def (Speed?) + Cover
         hit_chance = attacker.acc
+        
+        # Distance Modifier (Takeover Mode)
+        if self.mode == "takeover":
+            dist = abs(attacker.position - target.position)
+            # Closer is better. 
+            # Dist 0: +30%
+            # Dist 100: -20%
+            # Formula: 30 - (dist / 2)
+            mod = 30 - (dist / 2)
+            hit_chance += mod
         
         # Cover Penalty
         if target.cover_level == 1: hit_chance -= 25

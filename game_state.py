@@ -160,6 +160,27 @@ class Town:
         self.player_is_mayor = False
         self.influence = 0 # 0-100 (Player control)
         self.treasury = 1000.0 # Funds for wages/repairs
+        
+        # Territory Control
+        self.rackets = [] # List of strings e.g. ["Protection", "Gambling"]
+        self.jail = [] # List of Gang Member objects
+        self.gang_control = False
+        
+        # Base Lawfulness (Derived from traits)
+        self.base_lawfulness = 50
+        if "Lawless" in self.traits: self.base_lawfulness = 10
+        if "Poor" in self.traits: self.base_lawfulness = 30
+        if "Rich" in self.traits: self.base_lawfulness = 70
+        if "Fortified" in self.traits: self.base_lawfulness = 90
+
+    @property
+    def lawfulness(self):
+        if self.gang_control: return 0
+        
+        val = self.base_lawfulness
+        if self.mayor_status == "Dead":
+            val = int(val * 0.5) # Chaos reduces lawfulness
+        return val
 
 class WorldState:
     def __init__(self):
