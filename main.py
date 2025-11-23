@@ -33,7 +33,7 @@ def main_menu():
         elif choice == "Q":
             sys.exit()
 
-def new_game():
+def new_game(existing_world=None):
     clear_screen()
     print("=== CHARACTER CREATION ===")
     name = input("Enter your name: ")
@@ -61,7 +61,18 @@ def new_game():
     player.cash = 12.50
     player.ammo = 6
     
-    world = WorldState()
+    if existing_world:
+        world = existing_world
+        # Reset player specific world flags
+        for t in world.towns.values():
+            if t.player_is_mayor:
+                t.player_is_mayor = False
+                t.mayor_status = "Dead" # Previous mayor (player) died
+        
+        world.rumors.append(f"The legend of the previous drifter ended in {world.town_name}.")
+    else:
+        world = WorldState()
+        
     world.town_name = start_town
     
     print(f"\nWelcome, {name}. Your journey begins in {start_town}.")
@@ -130,11 +141,7 @@ def game_loop(player, world):
                 save_game(player, world)
             sys.exit()
             
-    print("\n\n YOU HAVE DIED.")
-    print(f" Name: {player.name}")
-    print(f" Cash: ${player.cash:.2f}")
-    print(f" Honor: {player.honor}")
-    input("Press Enter to exit...")
+    handle_death(player, world)
 
 def travel_menu(player, world):
     while True:
@@ -615,7 +622,27 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         
     input("Press Enter...")
 
-
+def handle_death(player, world):
+    print("\n\n YOU HAVE DIED.")
+    print(f" Name: {player.name}")
+    print(f" Cash: ${player.cash:.2f}")
+    print(f" Honor: {player.honor}")
+    
+    print("\n=== LEGACY ===")
+    print("1. New Drifter (Inherit World State)")
+    print("2. New World (Full Reset)")
+    print("Q. Quit")
+    
+    choice = input("Choice: ").upper()
+    
+    if choice == "1":
+        new_player, new_world = new_game(existing_world=world)
+        game_loop(new_player, new_world)
+    elif choice == "2":
+        new_player, new_world = new_game()
+        game_loop(new_player, new_world)
+    else:
+        sys.exit()
 
 def visit_doctor(player, world):
     clear_screen()

@@ -154,3 +154,17 @@ All notable changes to this project will be documented in this file.
     - **Save Points**: Save when renting a room or quitting the game.
     - **Seamless Resume**: "Continue" option loads the exact state of the world and player.
   - **Refactored Main Loop**: Separated initialization from the game loop to support menu navigation.
+
+## [0.9.0] - 2025-11-23
+
+### Added
+- **Permadeath & Legacy System**:
+  - **Death Handling**: Upon death, players are presented with a choice instead of an immediate exit.
+  - **Legacy Mode ("New Drifter")**: Start a new character in the *same* world instance.
+    - Inherits the world state (Town heat, dead NPCs, rumors).
+    - Previous character's death is recorded as a rumor.
+    - Resets player-specific flags (e.g., Mayor status) while keeping world changes.
+  - **Full Reset ("New World")**: Option to wipe the save and start fresh.
+- **Code Refactoring**:
+  - `handle_death` function added to `main.py` to manage the post-mortem flow.
+  - `new_game` updated to accept an optional `existing_world` parameter for legacy inheritance.
