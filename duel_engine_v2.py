@@ -226,7 +226,10 @@ class DuelEngineV2:
                 "Shot hits a spittoon. *DING*",
                 "Shot shatters a whiskey bottle.",
                 "Bullet hits a passing chicken.",
-                "Shot knocks a hat off a bystander."
+                "Shot knocks a hat off a bystander.",
+                "Wide shot!",
+                "Bullet digs into the dirt.",
+                "Shot goes wild!"
             ]
             flavor = random.choice(miss_msgs)
             return BodyPart.MISS, 0, f"{msg_prefix}Miss! {flavor}"
@@ -244,7 +247,10 @@ class DuelEngineV2:
         hit_part = random.choice(parts)
         
         # 6. Calculate Effects
-        msg = f"{msg_prefix}Hits {hit_part.value}!"
+        hit_verbs = ["strikes", "pierces", "grazes", "impacts", "hits"]
+        verb = random.choice(hit_verbs)
+        msg = f"{msg_prefix}Bullet {verb} {hit_part.value}!"
+        
         damage_blood = 1 # Base blood loss for any hit
         
         # Structural Damage
@@ -410,7 +416,7 @@ class DuelEngineV2:
                 actor.position += 1
             else:
                 actor.position -= 1
-            msgs.append(f"{actor.name} paces. Pos: {actor.position}")
+            msgs.append(f"{actor.name} steps back to {actor.position}.")
             
         elif action == Action.FLEE:
             if abs(actor.position) >= 13:
@@ -419,27 +425,28 @@ class DuelEngineV2:
                     msgs.append(f"{actor.name} flees into the sunset!")
                     # End game logic handled in loop
                 else:
-                    msgs.append(f"{actor.name} tries to flee but is too close to opponent!")
+                    msgs.append(f"{actor.name} tries to flee but is too close!")
             else:
                 # Move 2 spaces away
                 move = 2
                 if actor.position >= 0: actor.position += move
                 else: actor.position -= move
-                msgs.append(f"{actor.name} flees! Pos: {actor.position}")
+                msgs.append(f"{actor.name} sprints away! Pos: {actor.position}")
 
         elif action == Action.TURN:
             if actor.orientation == Orientation.FACING_AWAY:
                 actor.orientation = Orientation.FACING_OPPONENT
+                msgs.append(f"{actor.name} turns to face opponent.")
             else:
                 actor.orientation = Orientation.FACING_AWAY
-            msgs.append(f"{actor.name} turns to {actor.orientation.value}.")
+                msgs.append(f"{actor.name} turns their back.")
 
         elif action == Action.DRAW:
             if actor.weapon_state == WeaponState.HOLSTERED:
                 actor.weapon_state = WeaponState.DRAWN
-                msgs.append(f"{actor.name} draws weapon!")
+                msgs.append(f"{actor.name} draws!")
             else:
-                msgs.append(f"{actor.name} fumbles for a weapon they don't have holstered.")
+                msgs.append(f"{actor.name} fumbles for a weapon.")
 
         elif action == Action.PICK_UP:
             if actor.weapon_state == WeaponState.DROPPED:
@@ -461,7 +468,7 @@ class DuelEngineV2:
         elif action == Action.RELOAD:
             if actor.ammo < 6:
                 actor.ammo += 1
-                msgs.append(f"{actor.name} loads a round.")
+                msgs.append(f"{actor.name} loads a round. (Ammo: {actor.ammo}/6)")
 
         elif action == Action.DUCK:
             actor.is_ducking = True
@@ -549,7 +556,7 @@ class DuelEngineV2:
             elif actor.position < 0:
                 actor.position += 1
             # If at 0, cross over? Or stay? Let's stay at 0 for now (melee range)
-            msgs.append(f"{actor.name} steps in. Pos: {actor.position}")
+            msgs.append(f"{actor.name} steps in to {actor.position}.")
         
         return msgs
 
@@ -563,27 +570,27 @@ class DuelEngineV2:
         
         # 1. Jab > Hook
         if a1 == Action.JAB and a2 == Action.HOOK:
-            self.log.append(f"RPS: JAB beats HOOK! {self.p2.name} is interrupted.")
+            self.log.append(f"JAB beats HOOK! {self.p2.name} is interrupted.")
             p2_override = Action.WAIT # Cancel Hook
         elif a2 == Action.JAB and a1 == Action.HOOK:
-            self.log.append(f"RPS: JAB beats HOOK! {self.p1.name} is interrupted.")
+            self.log.append(f"JAB beats HOOK! {self.p1.name} is interrupted.")
             p1_override = Action.WAIT
             
         # 2. Hook > Block
         elif a1 == Action.HOOK and a2 == Action.BLOCK:
-            self.log.append(f"RPS: HOOK breaks BLOCK! {self.p2.name}'s guard is crushed.")
+            self.log.append(f"HOOK breaks BLOCK! {self.p2.name}'s guard is crushed.")
             p2_override = Action.WAIT # Block fails
         elif a2 == Action.HOOK and a1 == Action.BLOCK:
-            self.log.append(f"RPS: HOOK breaks BLOCK! {self.p1.name}'s guard is crushed.")
+            self.log.append(f"HOOK breaks BLOCK! {self.p1.name}'s guard is crushed.")
             p1_override = Action.WAIT
             
         # 3. Block > Jab (Counter-attack)
         elif a1 == Action.BLOCK and a2 == Action.JAB:
-            self.log.append(f"RPS: BLOCK stops JAB! {self.p1.name} counters!")
+            self.log.append(f"BLOCK stops JAB! {self.p1.name} counters!")
             p2_override = Action.WAIT # Jab blocked
             p1_override = Action.JAB # Counter-attack
         elif a2 == Action.BLOCK and a1 == Action.JAB:
-            self.log.append(f"RPS: BLOCK stops JAB! {self.p2.name} counters!")
+            self.log.append(f"BLOCK stops JAB! {self.p2.name} counters!")
             p1_override = Action.WAIT
             p2_override = Action.JAB
 

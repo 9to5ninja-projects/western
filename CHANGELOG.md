@@ -37,7 +37,7 @@ All notable changes to this project will be documented in this file.
   - **Auto-Play**: AI can take over player turns for large battles.
   - **Lethality**: Increased damage and critical hit chance in shootouts.
 - **Town Politics & Economy**:
-  - **Mayors**: Interact with town mayors to Bribe, Intimidate, or Kill them.
+  - **Mayors**: Interact with town mayors to Bribe, Intimidate
   - **Elections**: High reputation players can run for Mayor.
   - **Banking System**: Loot Bank Drafts from NPCs and attempt to cash them (Fraud mechanic).
   - **Town Influence**: Track player control over a town.
@@ -279,6 +279,37 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - **Window Resizing**: Fixed an issue where the game content would not scale to fit a maximized window.
 - **Input Blocking**: Resolved issues where terminal input would block the GUI update loop.
+
+## [0.17.0] - 2025-11-23
+
+### Added
+- **Drunkenness Mechanics**:
+  - **Drunk Counter**: Tracks alcohol consumption in `PlayerState`.
+  - **Effects**:
+    - **Visuals**: Log messages for blurred vision and spinning rooms.
+    - **Combat Penalties**: Accuracy halved at 3+ drinks, zeroed at 6+ drinks.
+    - **Blackout**: Drinking 9+ times triggers a blackout event (wake up in jail, hotel, or dirt).
+- **Duel GUI Improvements**:
+  - **Dynamic Stats**: Stats panel now hides unequipped items (Hat/Horse) to reduce clutter.
+  - **Visual Ammo**: Ammo is now displayed as a visual bar (e.g., `[|||...]`).
+  - **Contextual Actions**: Added buttons for "Kick Sand", "Punch", "Duck & Fire" based on distance/stance.
+- **Combat Resolution**:
+  - **Explicit Outcomes**: Added "KNOCKED OUT" and "DRAW" messages to duel resolution.
+  - **Pacing**: Added pauses (`wait_for_user`) to all combat endings to ensure messages can be read.
+
+### Changed
+- **Architecture Refactor**:
+  - **GameController**: Replaced nested `while` loops in `main.py` with a State Machine pattern for better flow control.
+  - **Entry Point**: `main.py` now initializes `GameController` to drive the application.
+- **Save System**:
+  - **GUI Prompt**: The "Save Game?" prompt in `state_town_hub` now uses the visual renderer instead of blocking terminal input.
+- **Duel Engine**:
+  - **Flavor Text**: Expanded hit/miss descriptions in `duel_engine_v2.py`.
+  - **Log Clarity**: Renamed "paces" to "steps back" for clarity.
+
+### Fixed
+- **Combat Scroll**: Fixed an issue where duel/brawl results would scroll off-screen instantly.
+- **Exit Crash**: Fixed a crash when quitting from the Main Menu.
 
 
 

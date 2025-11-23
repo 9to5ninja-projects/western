@@ -865,8 +865,8 @@ def start_brawl(player, world, npc=None):
         print("\nYou were knocked out...")
         
         log_lines = final_log + ["", "You were knocked out..."]
-        renderer.render(log_text=log_lines, player=player)
-        time.sleep(2)
+        wait_for_user(log_lines, player=player)
+        
         loss = random.randint(1, 5)
         player.cash = max(0, player.cash - loss)
         print(f"You wake up with ${loss} less.")
@@ -962,28 +962,53 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             {"label": "DUCK / JUMP", "key": "8/J"}
         ]
         
+        # Contextual Actions
+        if p1.is_ducking:
+             duel_buttons.append({"label": "RISE & FIRE", "key": "R"})
+        else:
+             duel_buttons.append({"label": "DUCK & FIRE", "key": "D"})
+
+        if p1.orientation == Orientation.FACING_OPPONENT and engine.get_distance() <= 3:
+            duel_buttons.append({"label": "KICK SAND", "key": "K"})
+            
+        if engine.get_distance() <= 2:
+            duel_buttons.append({"label": "PUNCH", "key": "P"})
+        
         log_lines = engine.log[-5:] if engine.log else ["Duel started."]
         
         # Detailed Stats
-        p1_hat = player.hat.name if player.hat else "None"
-        p1_horse = player.horse.name if player.horse else "None"
-        p2_hat = npc.hat.name if npc.hat else "None"
+        stats_text = []
         
-        stats_text = [
-            f"--- {p1.name} ---",
-            f"HP: {p1.hp}/{p1.max_hp}",
-            f"Ammo: {p1.ammo}/6",
-            f"Pos: {p1.position}",
-            f"Hat: {p1_hat}",
-            f"Horse: {p1_horse}",
-            "",
-            f"--- {p2.name} ---",
-            f"HP: {p2.hp}/{p2.max_hp}",
-            f"Ammo: {p2.ammo}/6",
-            f"Pos: {p2.position}",
-            f"Hat: {p2_hat}",
-            f"Horse: None"
-        ]
+        # Player 1 (User)
+        stats_text.append(f"--- {p1.name} ---")
+        stats_text.append(f"HP: {p1.hp}/{p1.max_hp}")
+        
+        # Visual Ammo
+        ammo_p1 = "|" * p1.ammo + "." * (6 - p1.ammo)
+        stats_text.append(f"Ammo: [{ammo_p1}]")
+        
+        stats_text.append(f"Pos: {p1.position}")
+        
+        if player.hat:
+            stats_text.append(f"Hat: {player.hat.name}")
+        if player.horse:
+            stats_text.append(f"Horse: {player.horse.name}")
+            
+        stats_text.append("") # Spacer
+        
+        # Player 2 (Enemy)
+        stats_text.append(f"--- {p2.name} ---")
+        stats_text.append(f"HP: {p2.hp}/{p2.max_hp}")
+        
+        ammo_p2 = "|" * p2.ammo + "." * (6 - p2.ammo)
+        stats_text.append(f"Ammo: [{ammo_p2}]")
+        
+        stats_text.append(f"Pos: {p2.position}")
+        
+        if npc.hat:
+            stats_text.append(f"Hat: {npc.hat.name}")
+        if hasattr(npc, 'horse') and npc.horse:
+            stats_text.append(f"Horse: {npc.horse.name}")
         
         renderer.render(
             stats_text=stats_text,
@@ -1011,7 +1036,7 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         # Check if Player Surrendered and AI Accepted
         if p1.is_surrendering and p2_act == Action.WAIT:
             print(f"\n{p2.name} accepts your surrender.")
-            renderer.render(log_text=[f"{p2.name} accepts your surrender."])
+            wait_for_user([f"{p2.name} accepts your surrender."], player=player)
             p1.conscious = False # End loop
             # Consequences?
             loss = random.randint(5, 15)
@@ -1020,6 +1045,9 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             break
             
         turn_count += 1
+        
+        if not p1.conscious:
+            break
         # time.sleep(1.5)
         
     p1.sync_state()
@@ -1100,9 +1128,16 @@ def start_duel(player, world, npc=None, is_sheriff=False):
 
     elif not p1.alive:
         print("\nDEFEAT.")
-        renderer.render(log_text=final_log + ["", "DEFEAT."])
+        wait_for_user(final_log + ["", "DEFEAT."], player=player)
         
-    wait_for_user()
+    else:
+        # Draw or Knocked Out
+        if not p1.conscious:
+            print("\nKNOCKED OUT.")
+            wait_for_user(final_log + ["", "KNOCKED OUT."], player=player)
+        else:
+            print("\nDRAW.")
+            wait_for_user(final_log + ["", "DRAW (Time Limit Reached)."], player=player)
 
 def handle_death(player, world):
     print("\n\n YOU HAVE DIED.")
