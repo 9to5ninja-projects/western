@@ -498,7 +498,7 @@ def visit_cantina(player, world):
                 sub = renderer.get_input()
                 
                 if sub == "M":
-                    pass # Just looking
+                    wait_for_user(["You mingle with the crowd.", "Nothing of interest happens."], player=player)
                 else:
                     try:
                         idx = int(sub) - 1
@@ -2288,16 +2288,13 @@ def visit_bank(player, world):
                     player.cash -= amount
                     player.bank_balance += amount
                     # print(f"Deposited ${amount:.2f}.")
-                    renderer.render(log_text=[f"Deposited ${amount:.2f}."], player=player)
-                    wait_for_user(player=player)
+                    wait_for_user([f"Deposited ${amount:.2f}."], player=player)
                 else:
                     # print("Invalid amount.")
-                    renderer.render(log_text=["Invalid amount."], player=player)
-                    wait_for_user(player=player)
+                    wait_for_user(["Invalid amount."], player=player)
             except:
                 # print("Invalid input.")
-                renderer.render(log_text=["Invalid input."], player=player)
-                wait_for_user(player=player)
+                wait_for_user(["Invalid input."], player=player)
             # time.sleep(1)
             
         elif choice == "2":
@@ -2316,16 +2313,13 @@ def visit_bank(player, world):
                     player.bank_balance -= amount
                     player.cash += amount
                     # print(f"Withdrew ${amount:.2f}.")
-                    renderer.render(log_text=[f"Withdrew ${amount:.2f}."], player=player)
-                    wait_for_user(player=player)
+                    wait_for_user([f"Withdrew ${amount:.2f}."], player=player)
                 else:
                     # print("Invalid amount.")
-                    renderer.render(log_text=["Invalid amount."], player=player)
-                    wait_for_user(player=player)
+                    wait_for_user(["Invalid amount."], player=player)
             except:
                 # print("Invalid input.")
-                renderer.render(log_text=["Invalid input."], player=player)
-                wait_for_user(player=player)
+                wait_for_user(["Invalid input."], player=player)
             # time.sleep(1)
             
         elif choice == "3":
@@ -2379,8 +2373,7 @@ def visit_bank(player, world):
                             # print(f"You receive ${draft.value:.2f}.")
                             player.cash += draft.value
                             player.inventory.remove(draft)
-                            renderer.render(log_text=["Teller: 'Everything seems in order.'", f"You receive ${draft.value:.2f}."], player=player)
-                            wait_for_user(player=player)
+                            wait_for_user(["Teller: 'Everything seems in order.'", f"You receive ${draft.value:.2f}."], player=player)
                         else:
                             # print("Teller: 'Wait a minute... this isn't you!'")
                             # print("ALARM RAISED!")
@@ -2396,13 +2389,12 @@ def visit_bank(player, world):
                                 start_duel(player, world, NPC("Sheriff"))
                             else:
                                 # print("You run out of the bank!")
-                                renderer.render(log_text=["You run out of the bank!"], player=player)
+                                wait_for_user(["You run out of the bank!"], player=player)
                                 time.sleep(1)
                                 return
                     else:
                         # print(f"Teller: 'This is drawn on the {origin} branch. You must go there to cash it.'")
-                        renderer.render(log_text=[f"Teller: 'This is drawn on {origin}.'", "You must go there to cash it."], player=player)
-                        wait_for_user(player=player)
+                        wait_for_user([f"Teller: 'This is drawn on {origin}.'", "You must go there to cash it."], player=player)
                         # time.sleep(1.5)
             except: pass
             
