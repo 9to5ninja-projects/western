@@ -320,6 +320,10 @@ All notable changes to this project will be documented in this file.
     - `game_utils.py`: Contains shared UI helpers and input handling (`wait_for_user`, `options_to_buttons`).
     - `combat_runner.py`: Encapsulates all combat loops (Brawl, Duel, Shootout) and crime logic.
   - **Performance**: Resolved editor freezing issues caused by excessive file size.
+- **Cantina Features**:
+  - **View Patrons**: List NPCs in the cantina and buy a round for the house to boost reputation.
+  - **The Champ**: A legendary brawler boss fight available for players with high Brawler Rep (>50).
+
 
 
 

@@ -663,6 +663,79 @@ def visit_cantina(player, world):
                 else:
                     pass
 
+        elif choice == "6":
+            # View Patrons
+            patrons = [n for n in world.active_npcs if n.location == world.town_name]
+            # Add Gang Members
+            for g in world.rival_gangs:
+                if g.active and g.hideout == world.town_name:
+                    patrons.append(g.leader)
+                    patrons.extend(g.members)
+            
+            log_lines = ["=== PATRONS ==="]
+            if not patrons:
+                log_lines.append("The bar is mostly empty.")
+            else:
+                for p in patrons:
+                    status = "Drinking"
+                    if p.bounty > 0: status = f"Wanted (${p.bounty})"
+                    log_lines.append(f"- {p.name} ({p.archetype}): {status}")
+            
+            buttons = [
+                {"label": "Buy Round ($5.00)", "key": "1"},
+                {"label": "Back", "key": "B"}
+            ]
+            
+            renderer.render(log_text=log_lines, buttons=buttons, player=player)
+            
+            if renderer.get_input() == "1":
+                if player.cash >= 5.00:
+                    player.cash -= 5.00
+                    player.reputation += 5
+                    player.charm += 1
+                    wait_for_user(["You buy a round for the house!", "Everyone cheers! (+5 Rep, +1 Charm)"], player=player)
+                else:
+                    wait_for_user(["Bartender: 'Show me the money first.'"], player=player)
+
+        elif choice == "7" and player.brawler_rep > 50:
+            # The Champ
+            champ = NPC("Brute")
+            champ.name = "Iron Jaw McGee"
+            champ.hp = 150 # Boss HP
+            champ.max_hp = 150
+            champ.brawl_atk = 8
+            champ.brawl_def = 8
+            
+            renderer.render(
+                log_text=[
+                    "The crowd parts...", 
+                    "Iron Jaw McGee steps forward.", 
+                    "'You think you're tough, kid?'",
+                    "Fight? (Y/N)"
+                ],
+                player=player,
+                buttons=[{"label": "Fight", "key": "Y"}, {"label": "Back Down", "key": "N"}]
+            )
+            
+            if renderer.get_input() == "Y":
+                start_brawl(player, world, champ)
+                # Check if player won (Champ KO'd or Dead)
+                if player.alive and (not champ.alive or champ.hp <= 0): 
+                    # Note: start_brawl handles the fight loop. 
+                    # If we are here and player is alive, we need to check if we actually won.
+                    # start_brawl usually prints the outcome.
+                    # Let's assume if we are back here and player is conscious, we might have won?
+                    # Actually start_brawl doesn't return a winner explicitly, it modifies state.
+                    # We can check champ.hp
+                    if champ.hp <= 0 or not champ.alive:
+                        player.reputation += 50
+                        player.cash += 100.00
+                        player.brawler_rep += 20
+                        wait_for_user(["You knocked out the Champ!", "You are the new Legend of the Ring!", "Earned $100.00 and massive Rep."], player=player)
+            else:
+                wait_for_user(["The crowd boos as you walk away."], player=player)
+                player.reputation -= 5
+
         elif choice == "B":
             break
 
