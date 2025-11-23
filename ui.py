@@ -60,12 +60,25 @@ def render_hud(player, world):
         
     print("="*80)
 
+from visualizer import renderer
+
+def get_player_input(prompt="\n> "):
+    """Get input from Visualizer Window if available, else Terminal"""
+    if renderer.window:
+        # Non-blocking print to terminal so user knows we are waiting
+        print(prompt, end="", flush=True)
+        key = renderer.get_input()
+        print(key) # Echo to terminal
+        return key
+    else:
+        return input(prompt)
+
 def get_menu_choice(options):
     for key, value in options.items():
         print(f" [{key}] {value}")
     
     while True:
-        choice = input("\n> ").strip().upper()
+        choice = get_player_input().strip().upper()
         if choice in options:
             return choice
         print("Invalid choice.")

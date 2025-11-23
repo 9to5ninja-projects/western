@@ -262,5 +262,23 @@ All notable changes to this project will be documented in this file.
   - **Visualizer Integration**: Added support for rendering backgrounds, characters, and UI overlays.
   - **Fallback System**: Automatically generates placeholder graphics if assets are missing.
 
+## [0.16.0] - 2025-11-23
+
+### Added
+- **Graphical User Interface (GUI) Phase 1**:
+  - **Window Management**: Game now runs in a dedicated, maximized window using `tkinter`.
+  - **Visual Input System**:
+    - **Action Buttons**: In-game menus (Town, Combat, Travel) now display clickable-style action buttons in the bottom-right corner.
+    - **Text Input**: Implemented a visual text input field for character naming.
+    - **Input Routing**: All keyboard input is now captured by the game window instead of the terminal.
+  - **Character Creation GUI**:
+    - Converted the text-based character creation wizard (Name, Hand, Town) to use the new visual interface.
+  - **Main Menu GUI**:
+    - Main menu now renders a visual scene with "New Game", "Continue", and "Quit" buttons.
+
+### Fixed
+- **Window Resizing**: Fixed an issue where the game content would not scale to fit a maximized window.
+- **Input Blocking**: Resolved issues where terminal input would block the GUI update loop.
+
 
 

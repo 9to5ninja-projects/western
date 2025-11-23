@@ -1,15 +1,46 @@
 import sys
 import time
 import random
+import threading
 from game_state import PlayerState, WorldState, Item, ItemType, AVAILABLE_HORSES, AVAILABLE_WEAPONS, AVAILABLE_HATS, LORE_ITEMS, Gang
-from ui import render_hud, get_menu_choice, clear_screen
+from ui import render_hud, get_menu_choice, clear_screen, get_player_input
 from duel_engine_v2 import DuelEngineV2, Combatant, Action, Orientation, ai_cheater, ai_honorable, ai_brawler
 from shootout_engine import ShootoutEngine
 from characters import NPC
 from save_manager import save_game, load_game, save_exists
+from visualizer import renderer, Actor
+
+# Initialize Visualizer
+# renderer = SceneRenderer() # Use global instance from visualizer.py
+
+def options_to_buttons(options):
+    buttons = []
+    for key, value in options.items():
+        # Simple truncation for button labels to avoid overflow
+        label = value.split(" - ")[0] if " - " in value else value
+        if len(label) > 20: label = label[:17] + "..."
+        buttons.append({"label": label, "key": key})
+    return buttons
 
 def main_menu():
+    # Start Visualizer Window
+    renderer.init_window()
+    renderer.load_scene("title_screen")
+    
+    # Define Title Screen Buttons
+    title_buttons = [
+        {"label": "New Game", "key": "1"},
+        {"label": "Quit", "key": "Q"}
+    ]
+    if save_exists():
+        title_buttons.insert(1, {"label": "Continue", "key": "2"})
+        
     while True:
+        renderer.render(
+            log_text=["Welcome to Western Legend", "Select an option..."],
+            buttons=title_buttons
+        )
+        
         clear_screen()
         print("=================================")
         print("   W E S T E R N   L E G E N D   ")
@@ -19,7 +50,7 @@ def main_menu():
             print("2. Continue")
         print("Q. Quit")
         
-        choice = input("\nChoice: ").upper()
+        choice = get_player_input("\nChoice: ").upper()
         
         if choice == "1":
             player, world = new_game()
@@ -35,21 +66,35 @@ def main_menu():
 
 def new_game(existing_world=None):
     clear_screen()
-    print("=== CHARACTER CREATION ===")
-    name = input("Enter your name: ")
+    renderer.load_scene("character_creation")
+    
+    # Name Entry
+    name = renderer.get_text_input("Enter your name:")
     if not name: name = "The Stranger"
     
-    print("\nDominant Hand:")
-    print("1. Right")
-    print("2. Left")
-    hand_choice = input("Choice: ")
+    # Dominant Hand
+    hand_buttons = [
+        {"label": "Right Handed", "key": "1"},
+        {"label": "Left Handed", "key": "2"}
+    ]
+    renderer.render(
+        log_text=[f"Name: {name}", "Select Dominant Hand..."],
+        buttons=hand_buttons
+    )
+    
+    hand_choice = get_player_input("Choice: ")
     hand = "left" if hand_choice == "2" else "right"
     
-    print("\nStarting Town:")
+    # Starting Town
     towns = ["Dusty Creek", "Shinbone", "Brimstone"]
-    for i, t in enumerate(towns):
-        print(f"{i+1}. {t}")
-    t_choice = input("Choice (Default: Dusty Creek): ")
+    town_buttons = [{"label": t, "key": str(i+1)} for i, t in enumerate(towns)]
+    
+    renderer.render(
+        log_text=[f"Name: {name}", f"Hand: {hand.title()}", "Select Starting Town..."],
+        buttons=town_buttons
+    )
+    
+    t_choice = get_player_input("Choice: ")
     try:
         start_town = towns[int(t_choice)-1]
     except:
@@ -94,7 +139,36 @@ def new_game(existing_world=None):
 def game_loop(player, world):
     # Game Loop
     while player.alive:
+        # Update Visuals
+        renderer.load_scene("town_street")
+        renderer.clear_actors()
+        renderer.add_actor(Actor("Player", "cowboy_male", 100, 300))
+        
+        # Update HUD with Visuals
         render_hud(player, world)
+        
+        # Define Buttons for Town Menu
+        town_buttons = [
+            {"label": "Cantina", "key": "1"},
+            {"label": "Stables", "key": "2"},
+            {"label": "Store", "key": "3"},
+            {"label": "Sheriff", "key": "4"},
+            {"label": "Doctor", "key": "5"},
+            {"label": "Rest", "key": "6"},
+            {"label": "Travel", "key": "7"},
+            {"label": "Quit", "key": "Q"}
+        ]
+        
+        renderer.render(
+            stats_text=[
+                f"Name: {player.name}",
+                f"Cash: ${player.cash:.2f}",
+                f"HP: {player.hp}/{player.max_hp}",
+                f"Town: {world.town_name}"
+            ],
+            log_text=[f"Day {world.week}", f"Location: {player.location}"],
+            buttons=town_buttons
+        )
         
         # Town Menu
         if player.location == "Wilderness Camp":
@@ -126,14 +200,24 @@ def game_loop(player, world):
         choice = get_menu_choice(options)
         
         if choice == "1":
+            renderer.load_scene("cantina_interior")
+            renderer.render(log_text=["You enter the smoky cantina..."])
             visit_cantina(player, world)
         elif choice == "2":
+            renderer.load_scene("stables")
+            renderer.render(log_text=["The smell of hay and manure greets you."])
             visit_stables(player, world)
         elif choice == "3":
+            renderer.load_scene("general_store")
+            renderer.render(log_text=["Shelves lined with canned goods and ammo."])
             visit_store(player, world)
         elif choice == "4":
+            renderer.load_scene("sheriff_office")
+            renderer.render(log_text=["Wanted posters cover the walls."])
             visit_sheriff(player, world)
         elif choice == "5":
+            renderer.load_scene("doctor_office")
+            renderer.render(log_text=["It smells of rubbing alcohol and blood."])
             visit_doctor(player, world)
         elif choice == "6":
             if player.is_gang_leader:
@@ -141,15 +225,23 @@ def game_loop(player, world):
                 player.location = "Wilderness Camp"
                 time.sleep(1)
             else:
+                renderer.load_scene("hotel_room")
+                renderer.render(log_text=["A simple room to rest your head."])
                 sleep(player, world)
         elif choice == "7":
+            renderer.load_scene("wilderness")
+            renderer.render(log_text=["Checking the map..."])
             travel_menu(player, world)
         elif choice == "8":
+            renderer.load_scene("town_hall")
+            renderer.render(log_text=["The seat of local power."])
             visit_mayor(player, world)
         elif choice == "9":
+            renderer.load_scene("bank_interior")
+            renderer.render(log_text=["Iron bars and stacks of cash."])
             visit_bank(player, world)
         elif choice == "Q":
-            if input("Save before quitting? (Y/N): ").upper() == "Y":
+            if get_player_input("Save before quitting? (Y/N): ").upper() == "Y":
                 save_game(player, world)
             sys.exit()
             
@@ -176,6 +268,16 @@ def travel_menu(player, world):
             opts[str(i+1)] = f"{dest} ({dist} miles) - {method}: ~{weeks} Weeks"
             
         opts["B"] = "Back"
+        
+        # Render Travel Menu
+        travel_buttons = [{"label": f"{dest[:6]}..", "key": str(i+1)} for i, dest in enumerate(destinations)]
+        travel_buttons.append({"label": "Back", "key": "B"})
+        
+        renderer.render(
+            stats_text=[f"Town: {world.town_name}", f"Horse: {player.horse.name if player.horse else 'None'}"],
+            log_text=["Where to next?"],
+            buttons=travel_buttons
+        )
         
         choice = get_menu_choice(opts)
         
@@ -209,7 +311,7 @@ def travel_menu(player, world):
                                 enemies = [g.leader] + g.members[:random.randint(2, 4)]
                                 player_team = [player] + player.gang
                                 
-                                if input("Fight? (Y/N): ").upper() == "Y":
+                                if get_player_input("Fight? (Y/N): ").upper() == "Y":
                                     engine = ShootoutEngine(player_team, enemies)
                                     while True:
                                         engine.render()
@@ -263,6 +365,7 @@ def visit_cantina(player, world):
         
         if random.random() < trouble_chance:
             print("\n!!! TROUBLE !!!")
+            renderer.render(log_text=["!!! TROUBLE !!!", "Defend yourself!"])
             
             if heat > 80:
                 print("The Sheriff has found you!")
@@ -271,7 +374,9 @@ def visit_cantina(player, world):
                 print("A drunkard spills his drink on you and swings!")
                 npc = NPC("Drunkard")
                 
-            input("Defend yourself! (Press Enter)")
+            # input("Defend yourself! (Press Enter)")
+            renderer.get_input()
+            
             if npc.archetype == "Sheriff":
                 start_duel(player, world, npc)
             else:
@@ -290,6 +395,12 @@ def visit_cantina(player, world):
              options["5"] = "Recruit Gunhand (Req: 20 Rep, $10)"
         else:
              options["5"] = "Recruit More Muscle ($10)"
+        
+        renderer.render(
+            stats_text=[f"Cash: ${player.cash:.2f}", f"HP: {player.hp}/{player.max_hp}"],
+            log_text=["The air is thick with smoke..."],
+            buttons=options_to_buttons(options)
+        )
         
         choice = get_menu_choice(options)
         
@@ -826,19 +937,33 @@ def visit_stables(player, world):
             "B": "Back"
         }
         
+        renderer.render(
+            stats_text=[f"Cash: ${player.cash:.2f}", f"Horse: {player.horse.name if player.horse else 'None'}"],
+            log_text=["The smell of hay and manure greets you."],
+            buttons=options_to_buttons(options)
+        )
+        
         choice = get_menu_choice(options)
         
         if choice == "1":
             print("\nAVAILABLE HORSES:")
+            horse_buttons = []
             for i, h in enumerate(horses_for_sale):
                 is_lore = h in LORE_ITEMS
                 prefix = "[LEGENDARY] " if is_lore else ""
                 print(f"{i+1}. {prefix}{h.name} (Spd: {h.stats.get('spd', 0)}, HP: {h.stats.get('hp', 0)}) - ${h.value:.2f}")
                 if is_lore:
                     print(f"   \"{h.description}\"")
+                horse_buttons.append({"label": f"{h.name} (${h.value:.0f})", "key": str(i+1)})
+            
+            renderer.render(
+                log_text=["Select a horse to purchase..."],
+                buttons=horse_buttons
+            )
             
             try:
-                idx = int(input("Choice: ")) - 1
+                # idx = int(input("Choice: ")) - 1
+                idx = int(renderer.get_input()) - 1
                 if 0 <= idx < len(horses_for_sale):
                     horse = horses_for_sale[idx]
                     if player.cash >= horse.value:
@@ -907,7 +1032,9 @@ def visit_stables(player, world):
                 print("Stablemaster: 'Hey! Get away from there!'")
                 print("He grabs a pitchfork!")
                 
-                if input("Fight? (Y/N): ").upper() == "Y":
+                renderer.render(log_text=["Stablemaster attacks!", "Fight? (Y/N)"])
+                # if input("Fight? (Y/N): ").upper() == "Y":
+                if renderer.get_input() == "Y":
                     # Stablemaster is a tough brawler
                     sm = NPC("Cowboy")
                     sm.name = "Stablemaster"
@@ -961,7 +1088,9 @@ def visit_store(player, world, robbery=False):
         
         if robbery:
             print("You pull your gun on the shopkeeper!")
-            if input("Rob the register? (Y/N): ").upper() == "Y":
+            renderer.render(log_text=["You pull your gun!", "Rob the register? (Y/N)"])
+            # if input("Rob the register? (Y/N): ").upper() == "Y":
+            if renderer.get_input() == "Y":
                 loot = random.randint(10, 50)
                 print(f"You grabbed ${loot:.2f}!")
                 player.cash += loot
@@ -995,6 +1124,12 @@ def visit_store(player, world, robbery=False):
             "B": "Back"
         }
         
+        renderer.render(
+            stats_text=[f"Cash: ${player.cash:.2f}", f"Ammo: {player.ammo}"],
+            log_text=["Shelves lined with canned goods and ammo."],
+            buttons=options_to_buttons(options)
+        )
+        
         choice = get_menu_choice(options)
         
         if choice == "1":
@@ -1017,6 +1152,7 @@ def visit_store(player, world, robbery=False):
                 
         elif choice == "3":
             print("\nWEAPONS:")
+            weapon_buttons = []
             for i, w in enumerate(weapons_for_sale):
                 cost = w.value * markup
                 is_lore = w in LORE_ITEMS
@@ -1024,9 +1160,12 @@ def visit_store(player, world, robbery=False):
                 print(f"{i+1}. {prefix}{w.name} (Acc: {w.stats.get('acc',0)}, Dmg: {w.stats.get('dmg',0)}) - ${cost:.2f}")
                 if is_lore:
                     print(f"   \"{w.description}\"")
+                weapon_buttons.append({"label": f"{w.name} (${cost:.2f})", "key": str(i+1)})
 
+            renderer.render(log_text=["Select a weapon..."], buttons=weapon_buttons)
             try:
-                idx = int(input("Choice: ")) - 1
+                # idx = int(input("Choice: ")) - 1
+                idx = int(renderer.get_input()) - 1
                 if 0 <= idx < len(weapons_for_sale):
                     w = weapons_for_sale[idx]
                     cost = w.value * markup
@@ -1041,28 +1180,26 @@ def visit_store(player, world, robbery=False):
 
         elif choice == "4":
             print("\nHATS:")
+            hat_buttons = []
             for i, h in enumerate(hats_for_sale):
                 cost = h.value * markup
                 is_lore = h in LORE_ITEMS
                 prefix = "[LEGENDARY] " if is_lore else ""
-                # Handle Hat object vs Item object (Lore items are Items, Hats are Hat objects)
-                # Hat objects have .stats['def'], Item objects have .stats
-                # But wait, LORE_ITEMS are Item objects.
-                # Standard hats are Hat objects.
-                # I need to be careful here.
                 
                 defense = h.stats.get('def', 0)
                 style = h.stats.get('style', 0)
-                # If it's a Hat object, it might have charm_base
                 if hasattr(h, 'charm_base'):
                     style = h.charm_base
                 
                 print(f"{i+1}. {prefix}{h.name} (Def: {defense}, Style: {style}) - ${cost:.2f}")
                 if is_lore:
                     print(f"   \"{h.description}\"")
+                hat_buttons.append({"label": f"{h.name} (${cost:.2f})", "key": str(i+1)})
 
+            renderer.render(log_text=["Select a hat..."], buttons=hat_buttons)
             try:
-                idx = int(input("Choice: ")) - 1
+                # idx = int(input("Choice: ")) - 1
+                idx = int(renderer.get_input()) - 1
                 if 0 <= idx < len(hats_for_sale):
                     h = hats_for_sale[idx]
                     cost = h.value * markup
@@ -1183,7 +1320,7 @@ def visit_sheriff(player, world):
                     time.sleep(1.5)
                 else:
                     print(f"{sheriff.name}: 'You look handy with a gun and got a good head on your shoulders.'")
-                    print(f"{sheriff.name}: 'I'll badge you. $5.00 a week, keep the peace, don't shoot unless shot at.'")
+                   
                     if input("Accept? (Y/N): ").upper() == "Y":
                         player.is_deputy = True
                         print("You are now a Deputy.")
@@ -2122,7 +2259,5 @@ def process_rival_gangs(world):
                     gang.members.append(new_member)
                     world.rumors.append(f"{gang.name} is recruiting in {gang.hideout}.")
 
-
 if __name__ == "__main__":
-    print("Starting Western Legend...")
     main_menu()
