@@ -75,6 +75,15 @@ def new_game(existing_world=None):
         # Generate Rival Gangs
         for _ in range(random.randint(1, 2)):
             generate_rival_gang(world)
+            
+        # Initialize Town Officials
+        for town in world.towns.values():
+            town.mayor = NPC("Mayor")
+            town.mayor.location = town.name
+            town.sheriff = NPC("Sheriff")
+            town.sheriff.location = town.name
+            world.active_npcs.append(town.mayor)
+            world.active_npcs.append(town.sheriff)
         
     world.town_name = start_town
     
@@ -992,18 +1001,26 @@ def visit_store(player, world, robbery=False):
             break
 
 def visit_sheriff(player, world):
+    town = world.get_town()
+    sheriff = town.sheriff
+    if not sheriff:
+        sheriff = NPC("Sheriff")
+        town.sheriff = sheriff
+        
     while True:
         render_hud(player, world)
         print("\n=== SHERIFF'S OFFICE ===")
+        print(f"Sheriff: {sheriff.name}")
+        print(f"Personality: {sheriff.personality} ({sheriff.personality_data.get('desc', '')})")
         
         heat = world.get_local_heat()
         if heat > 50:
-            print("Sheriff: 'I've got my eye on you, stranger.'")
+            print(f"{sheriff.name}: 'I've got my eye on you, stranger.'")
         if heat > 80:
-            print("Sheriff: 'You're pushing your luck.'")
+            print(f"{sheriff.name}: 'You're pushing your luck.'")
             
         options = {
-            "1": "Check Bounties (Not implemented)",
+            "1": "Check Bounties",
             "2": f"Pay off Bounty/Fines (Cost: ${heat * 2:.2f})",
             "B": "Back"
         }
@@ -1013,7 +1030,6 @@ def visit_sheriff(player, world):
         else:
             options["3"] = "Report for Duty (Patrol)"
             
-        town = world.get_town()
         if town.jail:
             options["4"] = "Bail Out Gang Member"
         
@@ -1052,29 +1068,33 @@ def visit_sheriff(player, world):
 
         elif choice == "2":
             cost = heat * 2
+            if sheriff.personality == "Corrupt":
+                cost = cost * 0.5
+                print(f"(Corrupt Discount: 50% off)")
+                
             if cost > 0:
-                print(f"Sheriff: 'That'll clear your name around here. ${cost:.2f}.'")
+                print(f"{sheriff.name}: 'That'll clear your name around here. ${cost:.2f}.'")
                 if input("Pay? (Y/N): ").upper() == "Y":
                     if player.cash >= cost:
                         player.cash -= cost
                         world.reduce_heat(100) # Clear all heat
-                        print("Sheriff: 'Alright. Keep your nose clean.'")
+                        print(f"{sheriff.name}: 'Alright. Keep your nose clean.'")
                     else:
-                        print("Sheriff: 'Come back when you have the money.'")
+                        print(f"{sheriff.name}: 'Come back when you have the money.'")
             else:
-                print("Sheriff: 'You're clean, son.'")
+                print(f"{sheriff.name}: 'You're clean, son.'")
 
         elif choice == "3":
             if not player.is_deputy:
                 if heat > 10:
-                    print("Sheriff: 'I don't hire troublemakers. Clean up your act.'")
+                    print(f"{sheriff.name}: 'I don't hire troublemakers. Clean up your act.'")
                     time.sleep(1.5)
-                elif player.honor < 5:
-                    print("Sheriff: 'I need someone the people trust. You ain't it.'")
+                elif player.honor < 5 and sheriff.personality == "Lawful":
+                    print(f"{sheriff.name}: 'I need someone the people trust. You ain't it.'")
                     time.sleep(1.5)
                 else:
-                    print("Sheriff: 'You look handy with a gun and got a good head on your shoulders.'")
-                    print("Sheriff: 'I'll badge you. $5.00 a week, keep the peace, don't shoot unless shot at.'")
+                    print(f"{sheriff.name}: 'You look handy with a gun and got a good head on your shoulders.'")
+                    print(f"{sheriff.name}: 'I'll badge you. $5.00 a week, keep the peace, don't shoot unless shot at.'")
                     if input("Accept? (Y/N): ").upper() == "Y":
                         player.is_deputy = True
                         print("You are now a Deputy.")
@@ -1089,6 +1109,9 @@ def visit_sheriff(player, world):
             break
 
 def patrol_town(player, world):
+    town = world.get_town()
+    sheriff = town.sheriff if town.sheriff else NPC("Sheriff")
+    
     print("\n=== TOWN PATROL ===")
     print("You spend the week walking the streets, breaking up fights, and keeping watch.")
     world.week += 1
@@ -1102,16 +1125,13 @@ def patrol_town(player, world):
         if input("Intervene? (Y/N): ").upper() == "Y":
             start_brawl(player, world, NPC("Drunkard"))
             if player.alive and player.conscious:
-                print("Sheriff: 'Good work, Deputy.'")
+                print(f"{sheriff.name}: 'Good work, Deputy.'")
                 player.honor += 5
     elif roll < 0.5:
         print("A gang of outlaws rides into town looking for trouble!")
-        print("Sheriff: 'Deputy! With me!'")
+        print(f"{sheriff.name}: 'Deputy! With me!'")
         
         # Setup Teams: Player + Sheriff vs Outlaws
-        sheriff = NPC("Sheriff")
-        sheriff.name = "Sheriff" # Generic ally
-        
         player_team = [player, sheriff]
         enemy_team = [NPC("Outlaw") for _ in range(random.randint(2, 3))]
         
@@ -1125,7 +1145,7 @@ def patrol_town(player, world):
             time.sleep(1.5)
             
         if player.alive:
-            print("Sheriff: 'That's one less problem to worry about.'")
+            print(f"{sheriff.name}: 'That's one less problem to worry about.'")
             player.reputation += 10
             player.cash += 20.00 # Bonus
             
@@ -1538,18 +1558,34 @@ def visit_mayor(player, world):
                 break
                 
         else:
-            print("The Mayor looks up from his paperwork.")
-            if town.mayor_status == "Bribed":
-                print("Mayor: 'I'm looking the other way, as agreed.'")
-            else:
-                print("Mayor: 'What do you want?'")
+            # Use Persistent Mayor
+            mayor = town.mayor
+            if not mayor: # Fallback
+                mayor = NPC("Mayor")
+                town.mayor = mayor
                 
-            options = {
-                "1": "Bribe ($50) - Ignore Crimes for 1 Week",
-                "2": "Intimidate (Req: High Rep/Gang)",
-                "3": "Kill Him",
-                "B": "Back"
-            }
+            print(f"Mayor {mayor.name} looks up from his paperwork.")
+            print(f"Personality: {mayor.personality} ({mayor.personality_data.get('desc', '')})")
+            
+            if town.mayor_status == "Bribed":
+                print(f"{mayor.name}: 'I'm looking the other way, as agreed.'")
+            else:
+                print(f"{mayor.name}: '{mayor.get_line()}'")
+                
+            # Calculate Bribe Cost
+            base_bribe = 50.0
+            bribe_mod = mayor.personality_data.get("bribe_cost_mod", 1.0)
+            bribe_cost = base_bribe * bribe_mod
+            
+            options = {}
+            if bribe_cost < 500:
+                options["1"] = f"Bribe (${bribe_cost:.2f}) - Ignore Crimes for 1 Week"
+            else:
+                options["1"] = "Bribe (Impossible)"
+                
+            options["2"] = "Intimidate (Req: High Rep/Gang)"
+            options["3"] = "Kill Him"
+            options["B"] = "Back"
             
             if player.reputation > 80 and not player.is_gang_leader:
                 options["4"] = "Run for Mayor (Election)"
@@ -1561,33 +1597,38 @@ def visit_mayor(player, world):
             choice = get_menu_choice(options)
             
             if choice == "1":
-                if player.cash >= 50:
-                    player.cash -= 50
+                if bribe_cost >= 500:
+                    print(f"{mayor.name}: 'I am a man of principle! Get out!'")
+                elif player.cash >= bribe_cost:
+                    player.cash -= bribe_cost
                     town.mayor_status = "Bribed"
-                    print("Mayor: 'A pleasure doing business.'")
+                    print(f"{mayor.name}: 'A pleasure doing business.'")
                     town.heat = 0 # Reset heat temporarily
                 else:
-                    print("Mayor: 'Get out, pauper.'")
+                    print(f"{mayor.name}: 'Get out, pauper.'")
                 time.sleep(1)
                 
             elif choice == "2":
                 # Intimidate
                 power = player.reputation + (len(player.gang) * 10)
-                if power > 60:
+                diff_mod = mayor.personality_data.get("intimidate_diff", 0)
+                difficulty = 60 + diff_mod
+                
+                if power > difficulty:
                     print("You threaten the Mayor.")
-                    print("Mayor: 'Okay! Okay! Just don't hurt me!'")
+                    print(f"{mayor.name}: 'Okay! Okay! Just don't hurt me!'")
                     town.mayor_status = "Bribed"
                     town.influence += 10
                 else:
-                    print("Mayor: 'Guards! Remove this ruffian!'")
-                    start_brawl(player, world, NPC("Sheriff"))
+                    print(f"{mayor.name}: 'Guards! Remove this ruffian!'")
+                    start_brawl(player, world, town.sheriff if town.sheriff else NPC("Sheriff"))
                 time.sleep(1)
                 
             elif choice == "3":
                 print("You draw your weapon!")
                 # Mayor has guards?
-                guards = [NPC("Sheriff")]
-                engine = ShootoutEngine([player] + player.gang, guards + [NPC("Mayor")])
+                guards = [town.sheriff if town.sheriff else NPC("Sheriff")]
+                engine = ShootoutEngine([player] + player.gang, guards + [mayor])
                 while True:
                     engine.render()
                     if not engine.run_turn(): break
@@ -1596,10 +1637,13 @@ def visit_mayor(player, world):
                 process_gang_casualties(player, world)
                 
                 if player.alive:
-                    print("The Mayor is dead.")
-                    town.mayor_status = "Dead"
-                    player.honor -= 50
-                    world.add_heat(100)
+                    if not mayor.alive:
+                        print("The Mayor is dead.")
+                        town.mayor_status = "Dead"
+                        player.honor -= 50
+                        world.add_heat(100)
+                    else:
+                        print("The Mayor escaped!")
                 else:
                     print("You failed to kill the Mayor.")
                     

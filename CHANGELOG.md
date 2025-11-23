@@ -222,5 +222,22 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - **Startup Crash**: Fixed an issue where the game would not launch due to a missing entry point in `main.py`.
 
+## [0.13.0] - 2025-11-23
+
+### Added
+- **Unique Characters (Officials)**:
+  - **Persistent Officials**: Mayors and Sheriffs are now persistent NPCs with names and personalities, rather than generic placeholders.
+  - **Mayor Personalities**:
+    - **Corrupt**: Cheaper bribes, lower town lawfulness.
+    - **Idealist**: Cannot be bribed, higher lawfulness.
+    - **Cowardly**: Easier to intimidate.
+    - **Tyrant**: Harder to deal with, high taxes.
+  - **Sheriff Personalities**:
+    - **Corrupt**: Offers 50% discount on paying off bounties.
+    - **Lawful**: Refuses to hire low-honor deputies.
+    - **Drunkard**: Often found in the cantina (flavor).
+    - **Gunslinger**: Deadly in a duel (High Accuracy/Speed).
+  - **Dynamic Interactions**: Dialogue and options in Town Hall and Sheriff's Office now reflect the official's personality.
+
 
 

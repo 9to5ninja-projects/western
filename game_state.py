@@ -167,6 +167,10 @@ class Town:
         self.jail = [] # List of Gang Member objects
         self.gang_control = False
         
+        # Officials (NPC Objects)
+        self.mayor = None
+        self.sheriff = None
+        
         # Base Lawfulness (Derived from traits)
         self.base_lawfulness = 50
         if "Lawless" in self.traits: self.base_lawfulness = 10

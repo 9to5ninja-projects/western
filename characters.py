@@ -58,6 +58,20 @@ ARCHETYPES = {
     }
 }
 
+MAYOR_PERSONALITIES = {
+    "Corrupt": {"desc": "Takes bribes easily.", "bribe_cost_mod": 0.5, "lawfulness_mod": -20},
+    "Idealist": {"desc": "Cannot be bribed.", "bribe_cost_mod": 999.0, "lawfulness_mod": 20},
+    "Cowardly": {"desc": "Easy to intimidate.", "intimidate_diff": -20, "lawfulness_mod": -10},
+    "Tyrant": {"desc": "High taxes, heavy guard.", "tax_mod": 2.0, "lawfulness_mod": 30}
+}
+
+SHERIFF_PERSONALITIES = {
+    "Corrupt": {"desc": "Looks the other way.", "bounty_hunt_chance": 0.1},
+    "Lawful": {"desc": "Relentless pursuit.", "bounty_hunt_chance": 0.8},
+    "Drunkard": {"desc": "Often at the saloon.", "bounty_hunt_chance": 0.2, "acc_mod": -10},
+    "Gunslinger": {"desc": "Deadly in a duel.", "acc_mod": 20, "spd_mod": 20}
+}
+
 class NPC:
     def __init__(self, archetype_name="Cowboy"):
         self.name = f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}"
@@ -122,6 +136,22 @@ class NPC:
         # Economy & Alignment
         self.alignment = random.choice(["Lawful", "Neutral", "Chaotic"])
         self.wage = self.recruit_cost * 0.1 # Daily wage is 10% of recruit cost
+        
+        # Unique Personality (Mayor/Sheriff)
+        self.personality = None
+        self.personality_data = {}
+        
+        if self.archetype == "Mayor":
+            self.personality = random.choice(list(MAYOR_PERSONALITIES.keys()))
+            self.personality_data = MAYOR_PERSONALITIES[self.personality]
+            self.lines.append(f"I am a {self.personality} man.")
+            
+        elif self.archetype == "Sheriff":
+            self.personality = random.choice(list(SHERIFF_PERSONALITIES.keys()))
+            self.personality_data = SHERIFF_PERSONALITIES[self.personality]
+            # Apply stats
+            self.acc += self.personality_data.get("acc_mod", 0)
+            self.spd += self.personality_data.get("spd_mod", 0)
         
         # Inventory (Bank Receipts)
         self.inventory = []

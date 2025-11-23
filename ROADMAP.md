@@ -68,8 +68,9 @@
 - [x] **Horse Economy**:
     - Stealing horses from stables (Stealth/Risk).
     - Selling stolen horses (Fence system - Planned).
-- [ ] **Unique Characters**:
+- [x] **Unique Characters**:
     - Distinct Mayors and Sheriffs with personalities.
+- [ ] **Lore Items**:
     - Lore-based unique items (Guns, Hats, Horses).
 - [x] **Trophy System**:
     - Collect Sheriff/Deputy badges from kills.
