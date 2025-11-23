@@ -22,10 +22,16 @@ def options_to_buttons(options):
         buttons.append({"label": label, "key": key})
     return buttons
 
-def wait_for_user(prompt="Press Enter to continue..."):
+def wait_for_user(prompt="Press Enter to continue...", player=None):
+    if isinstance(prompt, list):
+        log_text = prompt + ["(Press Enter)"]
+    else:
+        log_text = [prompt]
+
     renderer.render(
-        log_text=[prompt],
-        buttons=[{"label": "Continue", "key": "ENTER"}]
+        log_text=log_text,
+        buttons=[{"label": "Continue", "key": "ENTER"}],
+        player=player
     )
     while True:
         key = renderer.get_input()
@@ -1172,32 +1178,45 @@ def visit_stables(player, world):
         choice = get_menu_choice(options)
         
         if choice == "1":
-            print("\nAVAILABLE HORSES:")
+            # print("\nAVAILABLE HORSES:")
             horse_buttons = []
+            log_lines = ["AVAILABLE HORSES:"]
             for i, h in enumerate(horses_for_sale):
                 is_lore = h in LORE_ITEMS
                 prefix = "[LEGENDARY] " if is_lore else ""
-                print(f"{i+1}. {prefix}{h.name} (Spd: {h.stats.get('spd', 0)}, HP: {h.stats.get('hp', 0)}) - ${h.value:.2f}")
+                # print(f"{i+1}. {prefix}{h.name} (Spd: {h.stats.get('spd', 0)}, HP: {h.stats.get('hp', 0)}) - ${h.value:.2f}")
+                log_lines.append(f"{i+1}. {prefix}{h.name} - ${h.value:.2f}")
                 if is_lore:
-                    print(f"   \"{h.description}\"")
+                    # print(f"   \"{h.description}\"")
+                    log_lines.append(f"   \"{h.description}\"")
                 horse_buttons.append({"label": f"{h.name} (${h.value:.0f})", "key": str(i+1)})
             
+            horse_buttons.append({"label": "Back", "key": "B"})
+            
             renderer.render(
-                log_text=["Select a horse to purchase..."],
-                buttons=horse_buttons
+                log_text=log_lines + ["Select a horse to purchase..."],
+                buttons=horse_buttons,
+                player=player
             )
             
             try:
                 # idx = int(input("Choice: ")) - 1
-                idx = int(renderer.get_input()) - 1
+                inp = renderer.get_input()
+                if inp == "B": continue
+                
+                idx = int(inp) - 1
                 if 0 <= idx < len(horses_for_sale):
                     horse = horses_for_sale[idx]
                     if player.cash >= horse.value:
                         player.cash -= horse.value
                         player.horse = horse
                         print(f"You bought {horse.name}.")
+                        renderer.render(log_text=[f"You bought {horse.name}."], player=player)
+                        wait_for_user()
                     else:
                         print("Not enough cash.")
+                        renderer.render(log_text=["Not enough cash."], player=player)
+                        wait_for_user()
             except ValueError:
                 pass
                 
@@ -1207,41 +1226,66 @@ def visit_stables(player, world):
                 player.cash += val
                 print(f"Sold {player.horse.name} for ${val:.2f}.")
                 player.horse = None
+                wait_for_user([f"Sold horse for ${val:.2f}."], player=player)
             else:
                 print("You have no horse.")
+                wait_for_user(["You have no horse."], player=player)
                 
         elif choice == "3":
-            print("\nYou spend a week hauling heavy bales of hay.")
+            # print("\nYou spend a week hauling heavy bales of hay.")
+            log_lines = ["You spend a week hauling heavy bales of hay."]
             player.cash += 2.00
             if player.brawl_atk < 10:
                 player.brawl_atk += 1
-                print("You feel stronger. (+1 Brawl Atk)")
+                # print("You feel stronger. (+1 Brawl Atk)")
+                log_lines.append("You feel stronger. (+1 Brawl Atk)")
             else:
-                print("You maintain your strength.")
+                # print("You maintain your strength.")
+                log_lines.append("You maintain your strength.")
                 
             player.honor += 1
             world.week += 1
+            if player.weeks_rent_paid > 0:
+                player.weeks_rent_paid -= 1
+                log_lines.append("Rent paid for 1 week.")
+                
             world.reduce_heat(5) # Good honest work reduces heat
-            print("You earned $2.00. People respect honest work. (+1 Honor)")
-            time.sleep(1.5)
+            # print("You earned $2.00. People respect honest work. (+1 Honor)")
+            log_lines.append("You earned $2.00. (+1 Honor)")
+            
+            wait_for_user(log_lines, player=player)
+            # time.sleep(1.5)
             
         elif choice == "4":
-            print("\nYou spend a week getting thrown by wild mustangs.")
+            # print("\nYou spend a week getting thrown by wild mustangs.")
+            log_lines = ["You spend a week getting thrown by wild mustangs."]
             player.cash += 3.00
             if player.brawl_def < 10:
                 player.brawl_def += 1
-                print("You feel tougher. (+1 Brawl Def)")
+                # print("You feel tougher. (+1 Brawl Def)")
+                log_lines.append("You feel tougher. (+1 Brawl Def)")
             else:
-                print("You maintain your toughness.")
+                # print("You maintain your toughness.")
+                log_lines.append("You maintain your toughness.")
                 
             player.honor += 1
             world.week += 1
+            if player.weeks_rent_paid > 0:
+                player.weeks_rent_paid -= 1
+                log_lines.append("Rent paid for 1 week.")
+                
             world.reduce_heat(5)
-            print("You earned $3.00. (+1 Honor)")
-            time.sleep(1.5)
+            # print("You earned $3.00. (+1 Honor)")
+            log_lines.append("You earned $3.00. (+1 Honor)")
+            
+            wait_for_user(log_lines, player=player)
+            # time.sleep(1.5)
             
         elif choice == "5":
-            print("\nYou sneak into the stables at night...")
+            # print("\nYou sneak into the stables at night...")
+            renderer.render(log_text=["You sneak into the stables at night..."], player=player)
+            time.sleep(1)
+            
             # Stealth Check (Luck + Speed base?)
             stealth = player.luck_base + random.randint(0, 50)
             difficulty = 50 + (world.get_local_heat() / 2)
@@ -1253,12 +1297,13 @@ def visit_stables(player, world):
                 print(f"You successfully stole a {stolen_horse.name}!")
                 player.honor -= 10
                 world.add_heat(20)
+                wait_for_user([f"You stole a {stolen_horse.name}!", "Dishonorable act."], player=player)
             else:
                 # Caught
                 print("Stablemaster: 'Hey! Get away from there!'")
-                print("He grabs a pitchfork!")
+                # print("He grabs a pitchfork!")
                 
-                renderer.render(log_text=["Stablemaster attacks!", "Fight? (Y/N)"])
+                renderer.render(log_text=["Stablemaster: 'Hey! Get away!'", "He attacks!", "Fight? (Y/N)"], player=player)
                 # if input("Fight? (Y/N): ").upper() == "Y":
                 if renderer.get_input() == "Y":
                     # Stablemaster is a tough brawler
@@ -1275,10 +1320,12 @@ def visit_stables(player, world):
                         stolen_horse = random.choice(horses_for_sale)
                         player.horse = stolen_horse
                         print(f"You take the {stolen_horse.name} and flee.")
+                        wait_for_user(["You killed him.", f"You take the {stolen_horse.name} and flee."], player=player)
                 else:
                     print("You run away empty-handed.")
                     world.add_heat(10)
-            time.sleep(1.5)
+                    wait_for_user(["You run away empty-handed."], player=player)
+            # time.sleep(1.5)
 
         elif choice == "B":
             break
@@ -1564,31 +1611,46 @@ def patrol_town(player, world):
     town = world.get_town()
     sheriff = town.sheriff if town.sheriff else NPC("Sheriff")
     
-    print("\n=== TOWN PATROL ===")
-    print("You spend the week walking the streets, breaking up fights, and keeping watch.")
+    # print("\n=== TOWN PATROL ===")
+    # print("You spend the week walking the streets, breaking up fights, and keeping watch.")
+    log_lines = ["=== TOWN PATROL ===", "You spend the week walking the streets."]
+    
     world.week += 1
+    if player.weeks_rent_paid > 0:
+        player.weeks_rent_paid -= 1
+        log_lines.append("Rent paid for 1 week.")
+        
     player.cash += 5.00
     world.reduce_heat(10) # Deputies lower town heat
     
     # Random Event
     roll = random.random()
     if roll < 0.3:
-        print("You spot a drunkard harassing a lady.")
-        if input("Intervene? (Y/N): ").upper() == "Y":
+        # print("You spot a drunkard harassing a lady.")
+        log_lines.append("You spot a drunkard harassing a lady.")
+        renderer.render(log_text=log_lines + ["Intervene? (Y/N)"], player=player)
+        
+        # if input("Intervene? (Y/N): ").upper() == "Y":
+        if renderer.get_input() == "Y":
             start_brawl(player, world, NPC("Drunkard"))
             if player.alive and player.conscious:
                 print(f"{sheriff.name}: 'Good work, Deputy.'")
                 player.honor += 5
+                wait_for_user([f"{sheriff.name}: 'Good work, Deputy.'"], player=player)
     elif roll < 0.5:
-        print("A gang of outlaws rides into town looking for trouble!")
-        print(f"{sheriff.name}: 'Deputy! With me!'")
+        # print("A gang of outlaws rides into town looking for trouble!")
+        # print(f"{sheriff.name}: 'Deputy! With me!'")
+        log_lines.append("A gang of outlaws rides into town!")
+        log_lines.append(f"{sheriff.name}: 'Deputy! With me!'")
         
         # Setup Teams: Player + Sheriff vs Outlaws
         player_team = [player, sheriff]
         enemy_team = [NPC("Outlaw") for _ in range(random.randint(2, 3))]
         
-        print(f"Enemies: {len(enemy_team)}")
-        input("Start Shootout (Press Enter)")
+        # print(f"Enemies: {len(enemy_team)}")
+        # input("Start Shootout (Press Enter)")
+        log_lines.append(f"Enemies: {len(enemy_team)}")
+        wait_for_user(log_lines + ["Start Shootout"], player=player)
         
         engine = ShootoutEngine(player_team, enemy_team)
         while True:
@@ -1600,22 +1662,32 @@ def patrol_town(player, world):
             print(f"{sheriff.name}: 'That's one less problem to worry about.'")
             player.reputation += 10
             player.cash += 20.00 # Bonus
+            wait_for_user([f"{sheriff.name}: 'That's one less problem.'", "You earned $20.00 bonus."], player=player)
             
     else:
-        print("It was a quiet week.")
+        # print("It was a quiet week.")
+        log_lines.append("It was a quiet week.")
+        wait_for_user(log_lines, player=player)
     
-    input("Press Enter...")
+    # input("Press Enter...")
 
 def handle_crime(player, world, crime_name):
     print(f"\nYOU ARE CAUGHT {crime_name.upper()}!")
     print("The Sheriff draws his gun.")
     
-    if input("Surrender? (Y/N): ").upper() == "Y":
+    renderer.render(log_text=[f"CAUGHT {crime_name.upper()}!", "Sheriff draws his gun.", "Surrender? (Y/N)"], player=player)
+    
+    # if input("Surrender? (Y/N): ").upper() == "Y":
+    if renderer.get_input() == "Y":
         fine = world.get_local_heat() * 1.5
         print(f"You are thrown in jail for a week and fined ${fine:.2f}.")
         player.cash = max(0, player.cash - fine)
         world.week += 1
+        if player.weeks_rent_paid > 0:
+            player.weeks_rent_paid -= 1
+            
         world.reduce_heat(20)
+        wait_for_user([f"Jailed for a week. Fined ${fine:.2f}."], player=player)
     else:
         start_duel(player, world, is_sheriff=True)
 
