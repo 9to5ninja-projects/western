@@ -1191,8 +1191,8 @@ def visit_stables(player, world):
         options = {
             "1": "Buy Horse",
             "2": "Sell Current Horse",
-            "3": "Work: Haul Hay (1 Week, +$2, -Heat)",
-            "4": "Work: Break Horses (1 Week, +$3, -Heat)",
+            "3": "Work: Haul Hay (+$2, +1 Atk)",
+            "4": "Work: Break Horses (+$3, +1 Def)",
             "5": "Steal Horse (RISKY)",
             "B": "Back"
         }
