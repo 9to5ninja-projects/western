@@ -118,6 +118,9 @@ class PlayerState:
         
         # Training Caps
         self.stables_training_counts = {} # {town_name: count}
+        
+        # Drunkenness
+        self.drunk_counter = 0
 
     @property
     def max_hp(self):
@@ -137,7 +140,15 @@ class PlayerState:
             effect = INJURY_EFFECTS.get(inj, {})
             injury_mod += effect.get("acc", 0)
             
-        return self.acc_base + mod + injury_mod
+        val = self.acc_base + mod + injury_mod
+        
+        # Drunkenness Penalties
+        if self.drunk_counter >= 6:
+            return 0
+        elif self.drunk_counter >= 3:
+            return int(val / 2)
+            
+        return val
 
     def get_spd(self):
         mod = self.equipped_weapon.stats.get("spd", 0)

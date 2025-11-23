@@ -38,84 +38,185 @@ def wait_for_user(prompt="Press Enter to continue...", player=None):
         if key in ["ENTER", "SPACE"]:
             break
 
-def main_menu():
-    # Start Visualizer Window
-    renderer.init_window()
-    renderer.load_scene("title_screen")
-    
-    # Define Title Screen Buttons
-    title_buttons = [
-        {"label": "New Game", "key": "1"},
-        {"label": "Quit", "key": "Q"}
-    ]
-    if save_exists():
-        title_buttons.insert(1, {"label": "Continue", "key": "2"})
-        
-    while True:
-        renderer.render(
-            log_text=["Welcome to Western Legend", "Select an option..."],
-            buttons=title_buttons
-        )
-        
-        clear_screen()
-        print("=================================")
-        print("   W E S T E R N   L E G E N D   ")
-        print("=================================")
-        print("1. New Game")
-        if save_exists():
-            print("2. Continue")
-        print("Q. Quit")
-        
+class GameController:
+    def __init__(self):
+        self.state = "MAIN_MENU"
+        self.player = None
+        self.world = None
+        self.pending_world = None
+        self.running = True
+        renderer.init_window()
+
+    def run(self):
+        while self.running:
+            try:
+                if self.state == "MAIN_MENU": self.state_main_menu()
+                elif self.state == "NEW_GAME": self.state_new_game()
+                elif self.state == "LOAD_GAME": self.state_load_game()
+                elif self.state == "TOWN_HUB": self.state_town_hub()
+                elif self.state == "CANTINA": self.state_cantina()
+                elif self.state == "STABLES": self.state_stables()
+                elif self.state == "STORE": self.state_store()
+                elif self.state == "SHERIFF": self.state_sheriff()
+                elif self.state == "DOCTOR": self.state_doctor()
+                elif self.state == "HOTEL": self.state_hotel()
+                elif self.state == "TRAVEL": self.state_travel()
+                elif self.state == "CAMP": self.state_camp()
+                elif self.state == "MAYOR": self.state_mayor()
+                elif self.state == "BANK": self.state_bank()
+                elif self.state == "QUIT":
+                    self.running = False
+                    sys.exit()
+                else:
+                    print(f"Unknown state: {self.state}")
+                    self.state = "MAIN_MENU"
+            except Exception as e:
+                print(f"Error: {e}")
+                import traceback
+                traceback.print_exc()
+                wait_for_user("Error. Returning to Main Menu.")
+                self.state = "MAIN_MENU"
+
+    def state_main_menu(self):
+        renderer.load_scene("title_screen")
+        title_buttons = [{"label": "New Game", "key": "1"}, {"label": "Quit", "key": "Q"}]
+        if save_exists(): title_buttons.insert(1, {"label": "Continue", "key": "2"})
+        renderer.render(log_text=["Welcome to Western Legend", "Select an option..."], buttons=title_buttons)
         choice = get_player_input("\nChoice: ").upper()
+        if choice == "1": self.state = "NEW_GAME"
+        elif choice == "2" and save_exists(): self.state = "LOAD_GAME"
+        elif choice == "Q": self.state = "QUIT"
+
+    def state_new_game(self):
+        clear_screen()
+        renderer.load_scene("character_creation")
+        name = renderer.get_text_input("Enter your name:")
+        if not name: name = "The Stranger"
+        renderer.render(log_text=[f"Name: {name}", "Select Dominant Hand..."], buttons=[{"label": "Right", "key": "1"}, {"label": "Left", "key": "2"}])
+        hand = "left" if get_player_input("Choice: ") == "2" else "right"
+        towns = ["Dusty Creek", "Shinbone", "Brimstone"]
+        renderer.render(log_text=[f"Name: {name}", f"Hand: {hand}", "Select Town..."], buttons=[{"label": t, "key": str(i+1)} for i, t in enumerate(towns)])
+        try: start_town = towns[int(get_player_input("Choice: "))-1]
+        except: start_town = "Dusty Creek"
         
-        if choice == "1":
-            player, world = new_game()
-            game_loop(player, world)
-        elif choice == "2" and save_exists():
-            player, world = load_game()
-            if player and world:
-                # MIGRATION: Fix old saves
-                from characters import NPC
-                for town in world.towns.values():
-                    if not hasattr(town, "mayor") or town.mayor is None:
-                        town.mayor = NPC("Mayor")
-                        town.mayor.location = town.name
-                        if town.mayor not in world.active_npcs:
-                            world.active_npcs.append(town.mayor)
-                            
-                    if not hasattr(town, "sheriff") or town.sheriff is None:
-                        town.sheriff = NPC("Sheriff")
-                        town.sheriff.location = town.name
-                        if town.sheriff not in world.active_npcs:
-                            world.active_npcs.append(town.sheriff)
-                            
-                    if not hasattr(town, "mayor_status"): town.mayor_status = "Alive"
-                    if not hasattr(town, "heat"): town.heat = 0
-                    if not hasattr(town, "base_lawfulness"): town.base_lawfulness = 50
-                    if not hasattr(town, "player_is_mayor"): town.player_is_mayor = False
-                    if not hasattr(town, "influence"): town.influence = 0
-                    if not hasattr(town, "treasury"): town.treasury = 1000.0
-                    if not hasattr(town, "rackets"): town.rackets = []
-                    if not hasattr(town, "jail"): town.jail = []
-                    if not hasattr(town, "gang_control"): town.gang_control = False
+        self.player = PlayerState(name)
+        self.player.dominant_hand = hand
+        self.player.location = start_town
+        self.player.cash = 12.50
+        self.player.ammo = 6
+        
+        if self.pending_world:
+            self.world = self.pending_world
+            self.pending_world = None
+            for t in self.world.towns.values():
+                if t.player_is_mayor: t.player_is_mayor = False; t.mayor_status = "Dead"
+            self.world.rumors.append(f"The legend of the previous drifter ended in {self.world.town_name}.")
+        else:
+            self.world = WorldState()
+            for _ in range(random.randint(1, 2)): generate_rival_gang(self.world)
+            for town in self.world.towns.values():
+                town.mayor = NPC("Mayor"); town.mayor.location = town.name
+                town.sheriff = NPC("Sheriff"); town.sheriff.location = town.name
+                self.world.active_npcs.extend([town.mayor, town.sheriff])
+        
+        self.world.town_name = start_town
+        print(f"\nWelcome, {name}. Your journey begins in {start_town}.")
+        time.sleep(2)
+        self.state = "TOWN_HUB"
 
-                # MIGRATION: Fix old player saves
-                if not hasattr(player, "bank_balance"): player.bank_balance = 0.00
-                if not hasattr(player, "weeks_rent_paid"): player.weeks_rent_paid = 0
-                if not hasattr(player, "healing_injuries"): player.healing_injuries = {}
-                if not hasattr(player, "is_deputy"): player.is_deputy = False
-                if not hasattr(player, "is_gang_leader"): player.is_gang_leader = False
-                if not hasattr(player, "camp_established"): player.camp_established = False
-                if not hasattr(player, "gang"): player.gang = []
-                if not hasattr(player, "dominant_hand"): player.dominant_hand = "right"
-                if not hasattr(player, "luck_base"): player.luck_base = 30
-                if not hasattr(player, "stables_training_counts"): player.stables_training_counts = {}
+    def state_load_game(self):
+        self.player, self.world = load_game()
+        if self.player and self.world:
+            # MIGRATION LOGIC
+            for town in self.world.towns.values():
+                if not hasattr(town, "mayor") or town.mayor is None: town.mayor = NPC("Mayor"); town.mayor.location = town.name; self.world.active_npcs.append(town.mayor)
+                if not hasattr(town, "sheriff") or town.sheriff is None: town.sheriff = NPC("Sheriff"); town.sheriff.location = town.name; self.world.active_npcs.append(town.sheriff)
+                if not hasattr(town, "mayor_status"): town.mayor_status = "Alive"
+                if not hasattr(town, "heat"): town.heat = 0
+                if not hasattr(town, "base_lawfulness"): town.base_lawfulness = 50
+                if not hasattr(town, "player_is_mayor"): town.player_is_mayor = False
+                if not hasattr(town, "influence"): town.influence = 0
+                if not hasattr(town, "treasury"): town.treasury = 1000.0
+                if not hasattr(town, "rackets"): town.rackets = []
+                if not hasattr(town, "jail"): town.jail = []
+                if not hasattr(town, "gang_control"): town.gang_control = False
+            if not hasattr(self.player, "bank_balance"): self.player.bank_balance = 0.00
+            if not hasattr(self.player, "weeks_rent_paid"): self.player.weeks_rent_paid = 0
+            if not hasattr(self.player, "healing_injuries"): self.player.healing_injuries = {}
+            if not hasattr(self.player, "is_deputy"): self.player.is_deputy = False
+            if not hasattr(self.player, "is_gang_leader"): self.player.is_gang_leader = False
+            if not hasattr(self.player, "camp_established"): self.player.camp_established = False
+            if not hasattr(self.player, "gang"): self.player.gang = []
+            if not hasattr(self.player, "dominant_hand"): self.player.dominant_hand = "right"
+            if not hasattr(self.player, "luck_base"): self.player.luck_base = 30
+            if not hasattr(self.player, "stables_training_counts"): self.player.stables_training_counts = {}
+            if not hasattr(self.player, "drunk_counter"): self.player.drunk_counter = 0
+            print(f"Welcome back, {self.player.name}.")
+            time.sleep(1)
+            self.state = "TOWN_HUB"
+        else:
+            print("Failed to load save.")
+            time.sleep(1)
+            self.state = "MAIN_MENU"
 
-                print(f"Welcome back, {player.name}.")
-                time.sleep(1)
-                game_loop(player, world)
+    def state_town_hub(self):
+        if not self.player.alive:
+            choice = handle_death(self.player, self.world)
+            if choice == "1": self.pending_world = self.world; self.state = "NEW_GAME"
+            elif choice == "2": self.pending_world = None; self.state = "NEW_GAME"
+            else: self.state = "QUIT"
+            return
+        renderer.load_scene("town_street")
+        renderer.clear_actors()
+        renderer.add_actor(Actor("Player", "cowboy_male", 100, 300))
+        render_hud(self.player, self.world)
+        if self.player.location == "Wilderness Camp": self.state = "CAMP"; return
+        
+        options = {
+            "1": "Cantina", "2": "Stables", "3": "General Store", "4": "Sheriff's Office",
+            "5": "Doctor", "6": "Rent Room", "7": "Travel", "Q": "Quit Game"
+        }
+        if self.player.is_gang_leader: options["6"] = "Return to Camp"; options["4"] = "Sheriff (RISKY)"
+        options["8"] = "Town Hall"; options["9"] = "Bank"
+        
+        renderer.render(player=self.player, world=self.world, log_text=[f"Day {self.world.week}", f"Loc: {self.player.location}"], buttons=options_to_buttons(options))
+        choice = get_menu_choice(options)
+        
+        if choice == "1": self.state = "CANTINA"
+        elif choice == "2": self.state = "STABLES"
+        elif choice == "3": self.state = "STORE"
+        elif choice == "4": self.state = "SHERIFF"
+        elif choice == "5": self.state = "DOCTOR"
+        elif choice == "6": self.state = "HOTEL"
+        elif choice == "7": self.state = "TRAVEL"
+        elif choice == "8": self.state = "MAYOR"
+        elif choice == "9": self.state = "BANK"
         elif choice == "Q":
-            sys.exit()
+            renderer.render(
+                log_text=["Save before quitting?", "Y: Save & Quit", "N: Quit without Saving"],
+                buttons=[{"label": "Yes", "key": "Y"}, {"label": "No", "key": "N"}]
+            )
+            if get_player_input().upper() == "Y": 
+                save_game(self.player, self.world)
+            self.state = "QUIT"
+
+    def state_cantina(self): visit_cantina(self.player, self.world); self.state = "TOWN_HUB"
+    def state_stables(self): visit_stables(self.player, self.world); self.state = "TOWN_HUB"
+    def state_store(self): visit_store(self.player, self.world); self.state = "TOWN_HUB"
+    def state_sheriff(self): visit_sheriff(self.player, self.world); self.state = "TOWN_HUB"
+    def state_doctor(self): visit_doctor(self.player, self.world); self.state = "TOWN_HUB"
+    def state_hotel(self):
+        if self.player.is_gang_leader:
+            print("\nYou slip out of town."); self.player.location = "Wilderness Camp"; time.sleep(1); self.state = "CAMP"
+        else:
+            renderer.load_scene("hotel_room"); renderer.render(log_text=["A simple room."]); sleep(self.player, self.world); self.state = "TOWN_HUB"
+    def state_travel(self): renderer.load_scene("wilderness"); renderer.render(log_text=["Checking map..."]); travel_menu(self.player, self.world); self.state = "TOWN_HUB"
+    def state_camp(self): visit_camp(self.player, self.world); self.state = "TOWN_HUB"
+    def state_mayor(self): renderer.load_scene("town_hall"); renderer.render(log_text=["Town Hall."]); visit_mayor(self.player, self.world); self.state = "TOWN_HUB"
+    def state_bank(self): renderer.load_scene("bank_interior"); renderer.render(log_text=["The Bank."]); visit_bank(self.player, self.world); self.state = "TOWN_HUB"
+
+# main_menu replaced by GameController
+
 
 def new_game(existing_world=None):
     clear_screen()
@@ -189,103 +290,8 @@ def new_game(existing_world=None):
     time.sleep(2)
     return player, world
 
-def game_loop(player, world):
-    # Game Loop
-    while player.alive:
-        # Update Visuals
-        renderer.load_scene("town_street")
-        renderer.clear_actors()
-        renderer.add_actor(Actor("Player", "cowboy_male", 100, 300))
-        
-        # Update HUD with Visuals
-        render_hud(player, world)
-        
-        # Town Menu
-        if player.location == "Wilderness Camp":
-            visit_camp(player, world)
-            continue
+# game_loop replaced by GameController
 
-        print(f"\n WHERE TO? ({world.town_name})")
-        options = {
-            "1": "Cantina (Drink, Rumors, Trouble)",
-            "2": "Stables (Horses, Work)",
-            "3": "General Store (Supplies)",
-            "4": "Sheriff's Office (Bounties)",
-            "5": "Doctor (Heal)",
-            "6": "Rent Room (Sleep/Save)",
-            "7": "Travel (Leave Town)",
-            "Q": "Quit Game"
-        }
-        
-        # Gang Leader Restrictions
-        if player.is_gang_leader:
-            options["6"] = "Return to Camp (Leave Town)"
-            # Sheriff is dangerous
-            options["4"] = "Sheriff's Office (RISKY)"
-            
-        # Mayor Option
-        options["8"] = "Town Hall (Mayor)"
-        options["9"] = "Bank (Deposit/Cash)"
-        
-        # Generate Buttons from Options
-        town_buttons = options_to_buttons(options)
-        
-        renderer.render(
-            player=player,
-            world=world,
-            log_text=[f"Day {world.week}", f"Location: {player.location}"],
-            buttons=town_buttons
-        )
-        
-        choice = get_menu_choice(options)
-        
-        if choice == "1":
-            renderer.load_scene("cantina_interior")
-            renderer.render(log_text=["You enter the smoky cantina..."])
-            visit_cantina(player, world)
-        elif choice == "2":
-            renderer.load_scene("stables")
-            renderer.render(log_text=["The smell of hay and manure greets you."])
-            visit_stables(player, world)
-        elif choice == "3":
-            renderer.load_scene("general_store")
-            renderer.render(log_text=["Shelves lined with canned goods and ammo."])
-            visit_store(player, world)
-        elif choice == "4":
-            renderer.load_scene("sheriff_office")
-            renderer.render(log_text=["Wanted posters cover the walls."])
-            visit_sheriff(player, world)
-        elif choice == "5":
-            renderer.load_scene("doctor_office")
-            renderer.render(log_text=["It smells of rubbing alcohol and blood."])
-            visit_doctor(player, world)
-        elif choice == "6":
-            if player.is_gang_leader:
-                print("\nYou slip out of town and ride to your hideout.")
-                player.location = "Wilderness Camp"
-                time.sleep(1)
-            else:
-                renderer.load_scene("hotel_room")
-                renderer.render(log_text=["A simple room to rest your head."])
-                sleep(player, world)
-        elif choice == "7":
-            renderer.load_scene("wilderness")
-            renderer.render(log_text=["Checking the map..."])
-            travel_menu(player, world)
-        elif choice == "8":
-            renderer.load_scene("town_hall")
-            renderer.render(log_text=["The seat of local power."])
-            visit_mayor(player, world)
-        elif choice == "9":
-            renderer.load_scene("bank_interior")
-            renderer.render(log_text=["Iron bars and stacks of cash."])
-            visit_bank(player, world)
-        elif choice == "Q":
-            if get_player_input("Save before quitting? (Y/N): ").upper() == "Y":
-                save_game(player, world)
-            sys.exit()
-            
-    handle_death(player, world)
 
 def travel_menu(player, world):
     while True:
@@ -415,9 +421,55 @@ def travel_menu(player, world):
                 
                 world.town_name = dest
                 wait_for_user([f"Arrived in {dest}."], player=player)
+                player.drunk_counter = 0 # Sober up after travel
                 break
         except ValueError:
             pass
+
+def handle_blackout(player, world):
+    renderer.render(log_text=["Everything goes black..."], player=player)
+    time.sleep(2)
+    
+    player.drunk_counter = 0
+    world.week += 1
+    
+    # Determine Outcome
+    roll = random.random()
+    
+    # 1. Jail (High Heat or Bad Luck)
+    heat = world.get_local_heat()
+    jail_chance = 0.1 + (heat / 200.0) # 10% to 60%
+    
+    if roll < jail_chance:
+        # Jail
+        renderer.render(log_text=["You wake up in a cell."], player=player)
+        wait_for_user()
+        handle_crime(player, world, "public intoxication")
+        return
+
+    # 2. Room (If rented)
+    if player.weeks_rent_paid > 0:
+        player.weeks_rent_paid -= 1
+        player.hp = min(player.max_hp, player.hp + 10)
+        renderer.render(log_text=["You wake up in your room with a splitting headache.", "At least you made it home."], player=player)
+        wait_for_user()
+        return
+        
+    # 3. Outside (Default)
+    loss = random.randint(1, 10)
+    player.cash = max(0, player.cash - loss)
+    player.reputation = max(0, player.reputation - 5)
+    player.honor -= 5
+    
+    renderer.render(
+        log_text=[
+            "You wake up face down in the dirt.", 
+            f"Your pockets feel lighter. (Lost ${loss})",
+            "People are staring. (-5 Rep, -5 Honor)"
+        ], 
+        player=player
+    )
+    wait_for_user()
 
 def visit_cantina(player, world):
     while True:
@@ -473,7 +525,21 @@ def visit_cantina(player, world):
             if player.cash >= 0.50:
                 player.cash -= 0.50
                 player.hp = min(player.max_hp, player.hp + 5)
-                wait_for_user(["You down the whiskey.", "It burns. (+5 HP)"], player=player)
+                
+                player.drunk_counter += 1
+                msgs = ["You down the whiskey.", "It burns. (+5 HP)"]
+                
+                if player.drunk_counter >= 9:
+                    msgs.append("The room spins violently...")
+                    wait_for_user(msgs, player=player)
+                    handle_blackout(player, world)
+                    return # Exit cantina loop
+                elif player.drunk_counter >= 6:
+                    msgs.append("You can barely see straight. (ACC = 0)")
+                elif player.drunk_counter >= 3:
+                    msgs.append("You feel woozy. (ACC Halved)")
+                
+                wait_for_user(msgs, player=player)
             else:
                 wait_for_user(["Bartender: 'No money, no drink.'"], player=player)
                 
@@ -896,13 +962,31 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             {"label": "DUCK / JUMP", "key": "8/J"}
         ]
         
-        log_lines = engine.log[-3:] if engine.log else ["Duel started."]
-        log_lines.append("Actions: [1]Pace [2]Turn [3]Draw [4]Shoot")
-        log_lines.append("         [5]High [6]Low [7]Reload [8]Duck")
-        log_lines.append(f"Special: {special}")
+        log_lines = engine.log[-5:] if engine.log else ["Duel started."]
+        
+        # Detailed Stats
+        p1_hat = player.hat.name if player.hat else "None"
+        p1_horse = player.horse.name if player.horse else "None"
+        p2_hat = npc.hat.name if npc.hat else "None"
+        
+        stats_text = [
+            f"--- {p1.name} ---",
+            f"HP: {p1.hp}/{p1.max_hp}",
+            f"Ammo: {p1.ammo}/6",
+            f"Pos: {p1.position}",
+            f"Hat: {p1_hat}",
+            f"Horse: {p1_horse}",
+            "",
+            f"--- {p2.name} ---",
+            f"HP: {p2.hp}/{p2.max_hp}",
+            f"Ammo: {p2.ammo}/6",
+            f"Pos: {p2.position}",
+            f"Hat: {p2_hat}",
+            f"Horse: None"
+        ]
         
         renderer.render(
-            stats_text=[f"{p1.name}: {p1.hp} HP | {p1.ammo} Ammo", f"{p2.name}: {p2.hp} HP"],
+            stats_text=stats_text,
             log_text=log_lines,
             buttons=duel_buttons
         )
@@ -1032,15 +1116,7 @@ def handle_death(player, world):
     print("Q. Quit")
     
     choice = input("Choice: ").upper()
-    
-    if choice == "1":
-        new_player, new_world = new_game(existing_world=world)
-        game_loop(new_player, new_world)
-    elif choice == "2":
-        new_player, new_world = new_game()
-        game_loop(new_player, new_world)
-    else:
-        sys.exit()
+    return choice
 
 def visit_doctor(player, world):
     while True:
@@ -1161,6 +1237,7 @@ def sleep(player, world):
                 player.hp = min(player.max_hp, player.hp + 20)
                 player.blood = min(player.max_blood, player.blood + 2)
                 player.weeks_rent_paid -= 1
+                player.drunk_counter = 0 # Sober up
                 
                 update_world_simulation(world)
                 process_healing(player)
@@ -1191,6 +1268,7 @@ def sleep(player, world):
             world.week += 1
             world.time_of_day = "Morning"
             player.hp = min(player.max_hp, player.hp + 5) # Less healing
+            player.drunk_counter = 0 # Sober up
             
             update_world_simulation(world)
             process_healing(player)
@@ -1326,6 +1404,7 @@ def visit_stables(player, world):
                 
             player.honor += 1
             world.week += 1
+            player.drunk_counter = 0 # Sober up
             if player.weeks_rent_paid > 0:
                 player.weeks_rent_paid -= 1
                 log_lines.append("Rent paid for 1 week.")
@@ -1356,6 +1435,7 @@ def visit_stables(player, world):
                 
             player.honor += 1
             world.week += 1
+            player.drunk_counter = 0 # Sober up
             if player.weeks_rent_paid > 0:
                 player.weeks_rent_paid -= 1
                 log_lines.append("Rent paid for 1 week.")
@@ -1702,6 +1782,7 @@ def patrol_town(player, world):
     log_lines = ["=== TOWN PATROL ===", "You spend the week walking the streets."]
     
     world.week += 1
+    player.drunk_counter = 0 # Sober up
     if player.weeks_rent_paid > 0:
         player.weeks_rent_paid -= 1
         log_lines.append("Rent paid for 1 week.")
@@ -1865,6 +1946,7 @@ def visit_camp(player, world):
             world.time_of_day = "Morning"
             player.hp = min(player.max_hp, player.hp + 10) # Less healing than bed
             player.blood = min(player.max_blood, player.blood + 1)
+            player.drunk_counter = 0 # Sober up
             print("You feel rested, but your back aches.")
             time.sleep(1)
             
@@ -2592,7 +2674,7 @@ def attempt_takeover(player, world):
         print(f"You seize the town treasury: ${loot}")
         player.cash += loot
         
-    elif player.alive:
+    elif player.alive and enemies_alive:
         print("\nThe attack failed! You retreat.")
         world.add_heat(50)
     else:
@@ -2732,5 +2814,6 @@ def process_rival_gangs(world):
                     gang.members.append(new_member)
                     world.rumors.append(f"{gang.name} is recruiting in {gang.hideout}.")
 
-if __name__ == "__main__":
-    main_menu()
+if __name__ == '__main__':
+    controller = GameController()
+    controller.run()
