@@ -302,6 +302,7 @@ def travel_menu(player, world):
             
             # Calculate Time
             speed = player.horse.stats.get("spd", 5) if player.horse else 2 # Walking speed is slow
+            if speed <= 0: speed = 2 # Fallback to walking speed if horse is invalid
             weeks = max(1, round(dist / (speed * 5))) # Rough calc
             
             method = f"Ride {player.horse.name}" if player.horse else "Walk"
@@ -314,6 +315,7 @@ def travel_menu(player, world):
         for i, dest in enumerate(destinations):
             dist = neighbors[dest]
             speed = player.horse.stats.get("spd", 5) if player.horse else 2
+            if speed <= 0: speed = 2
             weeks = max(1, round(dist / (speed * 5)))
             label = f"{dest} ({weeks}w)"
             travel_buttons.append({"label": label, "key": str(i+1)})
@@ -337,6 +339,7 @@ def travel_menu(player, world):
                 dest = destinations[idx]
                 dist = neighbors[dest]
                 speed = player.horse.stats.get("spd", 5) if player.horse else 2
+                if speed <= 0: speed = 2
                 weeks = max(1, round(dist / (speed * 5)))
                 
                 renderer.render(log_text=[f"Departing for {dest}...", f"Estimated time: {weeks} weeks."], player=player)

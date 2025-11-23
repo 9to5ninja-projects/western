@@ -36,7 +36,7 @@ AVAILABLE_HATS = [
 ]
 
 AVAILABLE_HORSES = [
-    Item("Old Mule", ItemType.HORSE, 15.00, {"spd": 0}, "Slow, stubborn, but better than walking."),
+    Item("Old Mule", ItemType.HORSE, 15.00, {"spd": 3}, "Slow, stubborn, but better than walking."),
     Item("Mustang", ItemType.HORSE, 50.00, {"spd": 10}, "Wild spirit, good speed."),
     Item("Thoroughbred", ItemType.HORSE, 120.00, {"spd": 25}, "Fast, elegant, expensive."),
 ]
