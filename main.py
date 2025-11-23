@@ -6,19 +6,70 @@ from ui import render_hud, get_menu_choice, clear_screen
 from duel_engine_v2 import DuelEngineV2, Combatant, Action, Orientation, ai_cheater, ai_honorable, ai_brawler
 from shootout_engine import ShootoutEngine
 from characters import NPC
+from save_manager import save_game, load_game, save_exists
 
-def main():
-    # Initialize Game
-    world = WorldState()
-    player = PlayerState("The Stranger")
+def main_menu():
+    while True:
+        clear_screen()
+        print("=================================")
+        print("   W E S T E R N   L E G E N D   ")
+        print("=================================")
+        print("1. New Game")
+        if save_exists():
+            print("2. Continue")
+        print("Q. Quit")
+        
+        choice = input("\nChoice: ").upper()
+        
+        if choice == "1":
+            player, world = new_game()
+            game_loop(player, world)
+        elif choice == "2" and save_exists():
+            player, world = load_game()
+            if player and world:
+                print(f"Welcome back, {player.name}.")
+                time.sleep(1)
+                game_loop(player, world)
+        elif choice == "Q":
+            sys.exit()
+
+def new_game():
+    clear_screen()
+    print("=== CHARACTER CREATION ===")
+    name = input("Enter your name: ")
+    if not name: name = "The Stranger"
     
-    # Starting Gear
+    print("\nDominant Hand:")
+    print("1. Right")
+    print("2. Left")
+    hand_choice = input("Choice: ")
+    hand = "left" if hand_choice == "2" else "right"
+    
+    print("\nStarting Town:")
+    towns = ["Dusty Creek", "Shinbone", "Brimstone"]
+    for i, t in enumerate(towns):
+        print(f"{i+1}. {t}")
+    t_choice = input("Choice (Default: Dusty Creek): ")
+    try:
+        start_town = towns[int(t_choice)-1]
+    except:
+        start_town = "Dusty Creek"
+        
+    player = PlayerState(name)
+    player.dominant_hand = hand
+    player.location = start_town
     player.cash = 12.50
     player.ammo = 6
-    # Debug/Cheat for testing
-    # player.reputation = 25 
-    # player.cash = 50.00
     
+    world = WorldState()
+    world.town_name = start_town
+    
+    print(f"\nWelcome, {name}. Your journey begins in {start_town}.")
+    time.sleep(2)
+    return player, world
+
+def game_loop(player, world):
+    # Game Loop
     while player.alive:
         render_hud(player, world)
         
@@ -75,6 +126,8 @@ def main():
         elif choice == "9":
             visit_bank(player, world)
         elif choice == "Q":
+            if input("Save before quitting? (Y/N): ").upper() == "Y":
+                save_game(player, world)
             sys.exit()
             
     print("\n\n YOU HAVE DIED.")
@@ -638,6 +691,10 @@ def sleep(player, world):
             else:
                 print(f"{inj} is healing... ({player.healing_injuries[inj]} weeks left)")
 
+    # Ask to Save
+    if input("Save Game? (Y/N): ").upper() == "Y":
+        save_game(player, world)
+
     input("Press Enter...")
 
 def visit_stables(player, world):
@@ -994,6 +1051,8 @@ def visit_camp(player, world):
                 break
                 
         elif choice == "Q":
+            if input("Save before quitting? (Y/N): ").upper() == "Y":
+                save_game(player, world)
             sys.exit()
 
 def plan_heist(player, world):
@@ -1363,5 +1422,5 @@ def visit_bank(player, world):
         elif choice == "B":
             break
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    main_menu()

@@ -139,3 +139,18 @@ All notable changes to this project will be documented in this file.
     - **Block beats Jab**: A successful block stops the jab and triggers an automatic counter-attack.
   - **New Action**: `BLOCK` added to the brawl menu.
   - **AI Update**: Opponents now utilize blocking and the full range of melee attacks.
+
+## [0.8.0] - 2025-11-23
+
+### Added
+- **Game Structure & Persistence**:
+  - **Main Menu**: New entry point with "New Game", "Continue", and "Quit" options.
+  - **Character Creation Wizard**:
+    - **Name Entry**: Custom character naming.
+    - **Handedness Selection**: Choose Right or Left hand (affects combat).
+    - **Starting Town**: Choose between Dusty Creek (Tutorial), Shinbone (Trade), or Brimstone (Danger).
+  - **Save/Load System**:
+    - **Persistence**: Game state (Player & World) is saved to `savegame.pkl`.
+    - **Save Points**: Save when renting a room or quitting the game.
+    - **Seamless Resume**: "Continue" option loads the exact state of the world and player.
+  - **Refactored Main Loop**: Separated initialization from the game loop to support menu navigation.
