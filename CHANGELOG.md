@@ -188,3 +188,20 @@ All notable changes to this project will be documented in this file.
   - **Town Class**: Now tracks `rackets`, `jail` population, and dynamic `lawfulness`.
   - **Lawfulness**: Derived from town traits (Lawless=10, Poor=30, Rich=70, Fortified=90).
 
+## [0.11.0] - 2025-11-23
+
+### Added
+- **Grand Larceny (Heists)**:
+  - **Stagecoach Robbery**: Mid-tier heist requiring 3+ gang members and horses. Ambush coaches on the road for cash.
+  - **Train Robbery**: End-game heist requiring 5+ gang members, horses, and a **Safecracker** specialist. High risk, massive reward.
+- **Horse Economy**:
+  - **Horse Theft**: Players can now attempt to steal horses from stables at night.
+    - **Stealth Mechanic**: Success depends on Luck vs Town Heat.
+    - **Risk**: Failure triggers a brawl with the Stablemaster and massive heat gain.
+- **Trophy System**:
+  - **Sheriff's Badge**: Killing a Sheriff now allows looting their badge as a trophy.
+  - **Effect**: Badges grant +Reputation (Infamy) but -Honor.
+- **New Item Types**:
+  - Added `TROPHY` item type for badges and unique collectibles.
+
+

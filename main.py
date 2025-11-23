@@ -366,6 +366,10 @@ def loot_screen(player, world, npc):
         if receipts:
             options["4"] = f"Loot Bank Drafts ({len(receipts)} found)"
 
+        # Check for Badge
+        if npc.archetype == "Sheriff" or npc.name == "Sheriff":
+            options["5"] = "Take Sheriff's Badge (Trophy)"
+
         options["B"] = "Leave Body"
         
         choice = get_menu_choice(options)
@@ -397,6 +401,15 @@ def loot_screen(player, world, npc):
                 print(f"You took {r.name}.")
             npc.inventory = [i for i in npc.inventory if i.item_type != ItemType.RECEIPT]
             player.honor -= 5
+            time.sleep(1)
+        elif choice == "5":
+            badge = Item("Sheriff's Badge", ItemType.TROPHY, 0, description="A bloodstained star.")
+            player.add_item(badge)
+            print("You took the badge. A grim trophy.")
+            player.reputation += 5
+            player.honor -= 5
+            # Prevent taking it again?
+            npc.archetype = "Corpse" # Hack to remove the option next loop
             time.sleep(1)
         elif choice == "B":
             break
@@ -734,6 +747,7 @@ def visit_stables(player, world):
             "2": "Sell Current Horse",
             "3": "Work: Haul Hay (1 Week, +$2, -Heat)",
             "4": "Work: Break Horses (1 Week, +$3, -Heat)",
+            "5": "Steal Horse (RISKY)",
             "B": "Back"
         }
         
@@ -786,6 +800,44 @@ def visit_stables(player, world):
             print("You earned $3.00 and feel tougher. (+1 Honor)")
             time.sleep(1.5)
             
+        elif choice == "5":
+            print("\nYou sneak into the stables at night...")
+            # Stealth Check (Luck + Speed base?)
+            stealth = player.luck_base + random.randint(0, 50)
+            difficulty = 50 + (world.get_local_heat() / 2)
+            
+            if stealth > difficulty:
+                # Success
+                stolen_horse = random.choice(AVAILABLE_HORSES)
+                player.horse = stolen_horse
+                print(f"You successfully stole a {stolen_horse.name}!")
+                player.honor -= 10
+                world.add_heat(20)
+            else:
+                # Caught
+                print("Stablemaster: 'Hey! Get away from there!'")
+                print("He grabs a pitchfork!")
+                
+                if input("Fight? (Y/N): ").upper() == "Y":
+                    # Stablemaster is a tough brawler
+                    sm = NPC("Cowboy")
+                    sm.name = "Stablemaster"
+                    sm.hp += 20
+                    start_brawl(player, world, sm)
+                    
+                    if not sm.alive:
+                        print("You killed the Stablemaster!")
+                        player.honor -= 30
+                        world.add_heat(50)
+                        # Still get the horse?
+                        stolen_horse = random.choice(AVAILABLE_HORSES)
+                        player.horse = stolen_horse
+                        print(f"You take the {stolen_horse.name} and flee.")
+                else:
+                    print("You run away empty-handed.")
+                    world.add_heat(10)
+            time.sleep(1.5)
+
         elif choice == "B":
             break
 
@@ -1090,8 +1142,27 @@ def visit_camp(player, world):
             sys.exit()
 
 def plan_heist(player, world):
-    print("\n=== PLAN HEIST ===")
-    print("Choose a target:")
+    while True:
+        clear_screen()
+        print("\n=== CRIMINAL OPERATIONS ===")
+        print("1. Bank Robbery (Target Specific Town)")
+        print("2. Stagecoach Robbery (Req: 3+ Gang, Horses)")
+        print("3. Train Robbery (Req: 5+ Gang, Horses, Dynamite/Safecracker)")
+        print("B. Back")
+        
+        choice = input("Choice: ").upper()
+        
+        if choice == "1":
+            plan_bank_robbery(player, world)
+        elif choice == "2":
+            rob_stagecoach(player, world)
+        elif choice == "3":
+            rob_train(player, world)
+        elif choice == "B":
+            break
+
+def plan_bank_robbery(player, world):
+    print("\n=== BANK ROBBERY TARGETS ===")
     
     # Dynamic Targets based on Map
     options = {}
@@ -1134,6 +1205,93 @@ def plan_heist(player, world):
             rob_bank(player, world)
     except:
         pass
+
+def rob_stagecoach(player, world):
+    print("\n=== STAGECOACH ROBBERY ===")
+    if len(player.gang) < 3:
+        print("You need at least 3 gang members to stop a coach.")
+        time.sleep(1.5)
+        return
+    if not player.horse:
+        print("You need a horse to chase it down.")
+        time.sleep(1.5)
+        return
+        
+    print("You set up an ambush on the trade road...")
+    time.sleep(1)
+    
+    # Chance to find one
+    if random.random() < 0.7:
+        print("A Wells Fargo coach approaches!")
+        guards = [NPC("Cowboy") for _ in range(2)] # Shotgun messengers
+        print(f"Guards: {len(guards)}")
+        
+        if input("Attack? (Y/N): ").upper() == "Y":
+            player_team = [player] + player.gang
+            engine = ShootoutEngine(player_team, guards)
+            while True:
+                engine.render()
+                if not engine.run_turn(): break
+                time.sleep(1)
+            
+            process_gang_casualties(player, world)
+            
+            if player.alive and not any(g.alive for g in guards):
+                loot = random.randint(50, 150)
+                print(f"You pry open the strongbox: ${loot:.2f}")
+                player.cash += loot
+                player.honor -= 10
+                player.reputation += 5
+                world.add_heat(20)
+            else:
+                print("The coach escaped!")
+    else:
+        print("No coaches came by today.")
+    
+    time.sleep(2)
+
+def rob_train(player, world):
+    print("\n=== TRAIN ROBBERY ===")
+    if len(player.gang) < 5:
+        print("You need a large crew (5+) to take a train.")
+        time.sleep(1.5)
+        return
+    
+    has_expert = any("Safecracker" in m.traits for m in player.gang)
+    if not has_expert:
+        print("You need a Safecracker to open the armored car.")
+        time.sleep(1.5)
+        return
+
+    print("You ride alongside the Union Pacific Express!")
+    print("This will be a tough fight.")
+    
+    if input("Board the train? (Y/N): ").upper() == "Y":
+        # Train Guards are tough
+        guards = [NPC("Sheriff") for _ in range(2)] + [NPC("Cowboy") for _ in range(4)]
+        
+        player_team = [player] + player.gang
+        engine = ShootoutEngine(player_team, guards)
+        while True:
+            engine.render()
+            if not engine.run_turn(): break
+            time.sleep(1)
+            
+        process_gang_casualties(player, world)
+        
+        if player.alive and not any(g.alive for g in guards):
+            loot = random.randint(500, 1500)
+            print(f"The Safecracker blows the safe! LOOT: ${loot:.2f}")
+            player.cash += loot
+            player.honor -= 50
+            player.reputation += 50
+            world.add_heat(80)
+            player.bounty += 100
+        else:
+            print("You were thrown off the train!")
+            player.hp -= 20
+            
+    time.sleep(2)
 
 def rob_bank(player, world):
     print("\n=== BANK ROBBERY ===")

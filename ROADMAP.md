@@ -49,14 +49,29 @@
 - [x] **Volatile Law**:
     - Sheriff/Deputy slots that can be filled or emptied.
     - Consequences of "No Sheriff" (Crime wave).
-- [ ] **Permadeath Options**:
+- [x] **Permadeath Options**:
     - "New Character, Same World" logic.
     - "Full Reset" logic.
 
-## Phase 7: Politics & Warfare (New)
+## Phase 7: Politics & Warfare (Completed)
 - [x] **Group Combat**: Shootout engine for gang wars.
 - [x] **Town Politics**: Mayors, Bribes, and Elections.
 - [x] **Banking**: Fraud and Economy.
-- [ ] **Territory Control**:
+- [x] **Territory Control**:
     - Racket system (Protection money).
-    - Town takeover mechanics.
+    - Town takeover mechanics (Line Battles).
+
+## Phase 8: Scaling & Variety (In Progress)
+- [x] **Grand Larceny**:
+    - Stagecoach Robbery (Mid-tier heist).
+    - Train Robbery (End-game heist, requires specialists).
+- [x] **Horse Economy**:
+    - Stealing horses from stables (Stealth/Risk).
+    - Selling stolen horses (Fence system - Planned).
+- [ ] **Unique Characters**:
+    - Distinct Mayors and Sheriffs with personalities.
+    - Lore-based unique items (Guns, Hats, Horses).
+- [x] **Trophy System**:
+    - Collect Sheriff/Deputy badges from kills.
+    - Infamy score based on trophies.
+

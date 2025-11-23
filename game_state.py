@@ -7,6 +7,7 @@ class ItemType(Enum):
     HORSE = "horse"
     HAT = "hat"
     RECEIPT = "receipt"
+    TROPHY = "trophy"
     MISC = "misc"
 
 class Item:
