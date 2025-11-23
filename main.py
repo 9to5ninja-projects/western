@@ -22,6 +22,16 @@ def options_to_buttons(options):
         buttons.append({"label": label, "key": key})
     return buttons
 
+def wait_for_user(prompt="Press Enter to continue..."):
+    renderer.render(
+        log_text=[prompt],
+        buttons=[{"label": "Continue", "key": "ENTER"}]
+    )
+    while True:
+        key = renderer.get_input()
+        if key == "ENTER":
+            break
+
 def main_menu():
     # Start Visualizer Window
     renderer.init_window()
@@ -365,7 +375,6 @@ def visit_cantina(player, world):
         
         if random.random() < trouble_chance:
             print("\n!!! TROUBLE !!!")
-            renderer.render(log_text=["!!! TROUBLE !!!", "Defend yourself!"])
             
             if heat > 80:
                 print("The Sheriff has found you!")
@@ -374,8 +383,7 @@ def visit_cantina(player, world):
                 print("A drunkard spills his drink on you and swings!")
                 npc = NPC("Drunkard")
                 
-            # input("Defend yourself! (Press Enter)")
-            renderer.get_input()
+            wait_for_user("Defend yourself!")
             
             if npc.archetype == "Sheriff":
                 start_duel(player, world, npc)
@@ -606,12 +614,27 @@ def start_brawl(player, world, npc=None):
     
     # Simple Brawl Loop
     while p1.conscious and p2.conscious and p1.alive and p2.alive:
-        engine.render()
+        # engine.render()
+        renderer.render_duel_state(engine, p1, p2)
         
         # Player Action
-        print("\n[1] JAB (Off-hand, Fast)   [2] HOOK (Dominant, Strong)")
-        print("[3] BLOCK (Counters Jab, Weak to Hook)")
-        act = input("Action: ")
+        # print("\n[1] JAB (Off-hand, Fast)   [2] HOOK (Dominant, Strong)")
+        # print("[3] BLOCK (Counters Jab, Weak to Hook)")
+        # act = input("Action: ")
+        
+        brawl_buttons = [
+            {"label": "JAB (Fast)", "key": "1"},
+            {"label": "HOOK (Strong)", "key": "2"},
+            {"label": "BLOCK", "key": "3"}
+        ]
+        
+        renderer.render(
+            stats_text=[f"{p1.name}: {p1.hp}/{p1.max_hp}", f"{p2.name}: {p2.hp}/{p2.max_hp}"],
+            log_text=engine.log[-5:] if engine.log else ["Brawl started!"],
+            buttons=brawl_buttons
+        )
+        
+        act = renderer.get_input()
         
         if act == "1": p1_act = Action.JAB
         elif act == "2": p1_act = Action.HOOK
@@ -625,13 +648,17 @@ def start_brawl(player, world, npc=None):
         else: p2_act = Action.BLOCK
         
         engine.run_turn(p1_act, p2_act)
-        time.sleep(1)
+        # time.sleep(1)
         
-    engine.render()
+    # engine.render()
+    renderer.render_duel_state(engine, p1, p2)
     p1.sync_state() # Save HP loss back to player
     
     if p1.conscious:
         print("\nYOU WON THE BRAWL!")
+        renderer.render(log_text=["YOU WON THE BRAWL!"])
+        time.sleep(2)
+        
         if not p2.alive and npc:
             npc.alive = False
             print("You beat them to death!")
@@ -641,22 +668,26 @@ def start_brawl(player, world, npc=None):
         player.reputation += 1
         
         # Loot Chance
-        if input("Loot them? (Y/N): ").upper() == "Y":
+        renderer.render(log_text=["Loot them? (Y/N)"])
+        # if input("Loot them? (Y/N): ").upper() == "Y":
+        if renderer.get_input() == "Y":
             loot_screen(player, world, npc)
         
         # Crime Consequence (Heat based)
         heat = world.get_local_heat()
         if random.randint(0, 100) < heat:
-            input("The Sheriff is approaching... (Press Enter)")
+            wait_for_user("The Sheriff is approaching...")
             handle_crime(player, world, "disturbing the peace")
             
     else:
         print("\nYou were knocked out...")
+        renderer.render(log_text=["You were knocked out..."])
+        time.sleep(2)
         loss = random.randint(1, 5)
         player.cash = max(0, player.cash - loss)
         print(f"You wake up with ${loss} less.")
         
-    input("Press Enter...")
+    wait_for_user()
 
 def start_duel(player, world, npc=None, is_sheriff=False):
     if not npc: 
@@ -2258,6 +2289,3 @@ def process_rival_gangs(world):
                     new_member.location = gang.hideout
                     gang.members.append(new_member)
                     world.rumors.append(f"{gang.name} is recruiting in {gang.hideout}.")
-
-if __name__ == "__main__":
-    main_menu()

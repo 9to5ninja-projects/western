@@ -230,6 +230,53 @@ class SceneRenderer:
         img = self.render()
         img.show()
 
+    def render_duel_state(self, engine, p1, p2):
+        """Render the duel/brawl state using the visualizer"""
+        # 1. Clear Actors
+        self.clear_actors()
+        
+        # 2. Add Combatants
+        # Map engine position (-15 to 15) to screen coordinates
+        # Center is SCENE_WIDTH / 2
+        center_x = SCENE_WIDTH // 2
+        scale_x = 15 # Pixels per unit
+        
+        p1_x = center_x + (p1.position * scale_x)
+        p2_x = center_x + (p2.position * scale_x)
+        
+        # Determine Sprites
+        p1_state = "idle"
+        if p1.weapon_state == "drawn": p1_state = "aiming"
+        if p1.is_ducking: p1_state = "ducking"
+        if not p1.conscious: p1_state = "dead"
+        
+        p2_state = "idle"
+        if p2.weapon_state == "drawn": p2_state = "aiming"
+        if p2.is_ducking: p2_state = "ducking"
+        if not p2.conscious: p2_state = "dead"
+        
+        # Facing
+        p1_facing_left = (p1.orientation.value == "facing away" and p1.direction_multiplier == -1) or \
+                         (p1.orientation.value == "facing opponent" and p1.direction_multiplier == 1)
+                         
+        p2_facing_left = (p2.orientation.value == "facing opponent" and p2.direction_multiplier == 1) or \
+                         (p2.orientation.value == "facing away" and p2.direction_multiplier == -1)
+
+        # Add Actors
+        self.add_actor(Actor(p1.name, "cowboy_male", p1_x, 300, p1_state, p1_facing_left))
+        self.add_actor(Actor(p2.name, "bandit_male", p2_x, 300, p2_state, p2_facing_left))
+        
+        # 3. Render
+        # Convert log to list
+        log_lines = engine.log[-5:] if engine.log else ["Fight started!"]
+        
+        stats = [
+            f"{p1.name}: {p1.hp}/{p1.max_hp} HP",
+            f"{p2.name}: {p2.hp}/{p2.max_hp} HP"
+        ]
+        
+        self.render(stats_text=stats, log_text=log_lines)
+
 # Global Renderer Instance
 renderer = SceneRenderer()
 
