@@ -311,5 +311,16 @@ All notable changes to this project will be documented in this file.
 - **Combat Scroll**: Fixed an issue where duel/brawl results would scroll off-screen instantly.
 - **Exit Crash**: Fixed a crash when quitting from the Main Menu.
 
+## [0.18.0] - 2025-11-23
+
+### Changed
+- **Major Refactor**:
+  - **Modularization**: Split the monolithic `main.py` into specialized modules to improve stability and maintainability.
+  - **New Modules**:
+    - `game_utils.py`: Contains shared UI helpers and input handling (`wait_for_user`, `options_to_buttons`).
+    - `combat_runner.py`: Encapsulates all combat loops (Brawl, Duel, Shootout) and crime logic.
+  - **Performance**: Resolved editor freezing issues caused by excessive file size.
+
+
 
 

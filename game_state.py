@@ -121,6 +121,13 @@ class PlayerState:
         
         # Drunkenness
         self.drunk_counter = 0
+        
+        # Combat Records
+        self.brawl_wins = 0
+        self.brawl_losses = 0
+        self.duel_wins = 0
+        self.duel_losses = 0
+        self.brawler_rep = 0 # Hidden stat for brawling sidequest
 
     @property
     def max_hp(self):
