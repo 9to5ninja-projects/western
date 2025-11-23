@@ -549,12 +549,10 @@ def visit_cantina(player, world):
                                         player.reputation += 10
                                         world.active_npcs.remove(target)
                             else:
-                                renderer.render(log_text=dialogue)
-                                wait_for_user()
+                                wait_for_user(dialogue, player=player)
                     except: pass
             else:
-                renderer.render(log_text=log_lines)
-                wait_for_user()
+                wait_for_user(log_lines, player=player)
             
             # input("Press Enter...")
         
