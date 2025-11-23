@@ -253,5 +253,22 @@ All notable changes to this project will be documented in this file.
 - **Rival Gangs**:
   - Rival gangs now actively defend the bank in their hideout town during robberies.
 
+## [0.14.0] - 2025-11-23
+
+### Added
+- **Lore Items (Legendary Gear)**:
+  - **Unique Weapons**:
+    - **Billy's Revolver**: High accuracy/speed.
+    - **Judge's Gavel**: Heavy melee weapon.
+  - **Unique Horses**:
+    - **The Pale Rider**: Ghostly stallion with max speed and high HP.
+  - **Unique Accessories**:
+    - **Marshal's Star**: Trophy item boosting reputation.
+    - **Dead Man's Hand**: Cursed cards boosting luck.
+- **Shop Integration**:
+  - **General Stores**: "Rich" or "Lawless" towns have a 30% chance to stock a random Lore Weapon or Hat.
+  - **Livery Stables**: "Rich" or "Ghost Towns" have a 20% chance to sell "The Pale Rider".
+  - **Unique Logic**: Lore items are unique; they will not appear in shops if the player already owns them.
+
 
 

@@ -27,6 +27,7 @@ A text-based simulation engine for western duels and cantina brawls.
 - **Character Traits**: NPCs have traits (Sharpshooter, Drunkard) and quirks.
 - **Bounty Hunting**: Track down specific NPCs using rumors and wanted posters.
 - **Gang Management**: Recruit followers and plan bank heists.
+- **Legendary Items**: Discover unique "Lore Items" like *The Pale Rider* or *Billy's Revolver* in high-end shops.
 
 ## Running the Game
 

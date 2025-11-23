@@ -48,6 +48,15 @@ AVAILABLE_WEAPONS = [
     Item("Sawed-Off Shotgun", ItemType.WEAPON, 60.00, {"acc": -10, "spd": 10, "dmg": 20}, "Devastating at close range."),
 ]
 
+# --- LORE ITEMS (UNIQUE) ---
+LORE_ITEMS = [
+    Item("The Pale Rider", ItemType.HORSE, 500.00, {"spd": 40, "hp": 100}, "A ghostly white stallion that never tires."),
+    Item("Billy's Revolver", ItemType.WEAPON, 300.00, {"acc": 15, "spd": 20}, "The legendary gun of a kid who never missed."),
+    Item("Judge's Gavel", ItemType.WEAPON, 150.00, {"acc": 5, "spd": 5, "dmg": 15}, "A heavy mallet used to deliver justice... or blunt force trauma."),
+    Item("Marshal's Star", ItemType.TROPHY, 200.00, {"reputation": 50}, "The badge of a fallen U.S. Marshal."),
+    Item("Dead Man's Hand", ItemType.MISC, 100.00, {"luck": 20}, "A cursed set of cards: Aces and Eights.")
+]
+
 INJURY_EFFECTS = {
     "Broken Arm": {"acc": -15, "spd": 0, "desc": "Aim is shaky."},
     "Broken Leg": {"acc": 0, "spd": -15, "desc": "Can't move fast."},

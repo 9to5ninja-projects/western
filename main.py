@@ -1,7 +1,7 @@
 import sys
 import time
 import random
-from game_state import PlayerState, WorldState, Item, ItemType, AVAILABLE_HORSES, AVAILABLE_WEAPONS, AVAILABLE_HATS, Gang
+from game_state import PlayerState, WorldState, Item, ItemType, AVAILABLE_HORSES, AVAILABLE_WEAPONS, AVAILABLE_HATS, LORE_ITEMS, Gang
 from ui import render_hud, get_menu_choice, clear_screen
 from duel_engine_v2 import DuelEngineV2, Combatant, Action, Orientation, ai_cheater, ai_honorable, ai_brawler
 from shootout_engine import ShootoutEngine
@@ -800,6 +800,19 @@ def sleep(player, world):
     input("Press Enter...")
 
 def visit_stables(player, world):
+    # Prepare horses
+    horses_for_sale = list(AVAILABLE_HORSES)
+    town = world.get_town()
+    
+    # Chance for Pale Rider in Rich or Ghost Towns
+    if "Rich" in town.traits or "Ghost Town" in town.traits:
+        if random.random() < 0.2: # 20% chance
+            pale_rider = next((i for i in LORE_ITEMS if i.name == "The Pale Rider"), None)
+            if pale_rider:
+                # Check if player already has it
+                if not (player.horse and player.horse.name == pale_rider.name):
+                    horses_for_sale.append(pale_rider)
+
     while True:
         render_hud(player, world)
         print("\n=== LIVERY STABLES ===")
@@ -817,20 +830,24 @@ def visit_stables(player, world):
         
         if choice == "1":
             print("\nAVAILABLE HORSES:")
-            for i, h in enumerate(AVAILABLE_HORSES):
-                print(f"{i+1}. {h.name} (Spd: {h.stats.get('spd', 0)}, HP: {h.stats.get('hp', 0)}) - ${h.value:.2f}")
+            for i, h in enumerate(horses_for_sale):
+                is_lore = h in LORE_ITEMS
+                prefix = "[LEGENDARY] " if is_lore else ""
+                print(f"{i+1}. {prefix}{h.name} (Spd: {h.stats.get('spd', 0)}, HP: {h.stats.get('hp', 0)}) - ${h.value:.2f}")
+                if is_lore:
+                    print(f"   \"{h.description}\"")
             
             try:
                 idx = int(input("Choice: ")) - 1
-                if 0 <= idx < len(AVAILABLE_HORSES):
-                    horse = AVAILABLE_HORSES[idx]
+                if 0 <= idx < len(horses_for_sale):
+                    horse = horses_for_sale[idx]
                     if player.cash >= horse.value:
                         player.cash -= horse.value
                         player.horse = horse
                         print(f"You bought {horse.name}.")
                     else:
                         print("Not enough cash.")
-            except:
+            except ValueError:
                 pass
                 
         elif choice == "2":
@@ -880,7 +897,7 @@ def visit_stables(player, world):
             
             if stealth > difficulty:
                 # Success
-                stolen_horse = random.choice(AVAILABLE_HORSES)
+                stolen_horse = random.choice(horses_for_sale) # Can steal from what's available
                 player.horse = stolen_horse
                 print(f"You successfully stole a {stolen_horse.name}!")
                 player.honor -= 10
@@ -902,7 +919,7 @@ def visit_stables(player, world):
                         player.honor -= 30
                         world.add_heat(50)
                         # Still get the horse?
-                        stolen_horse = random.choice(AVAILABLE_HORSES)
+                        stolen_horse = random.choice(horses_for_sale)
                         player.horse = stolen_horse
                         print(f"You take the {stolen_horse.name} and flee.")
                 else:
@@ -914,6 +931,30 @@ def visit_stables(player, world):
             break
 
 def visit_store(player, world, robbery=False):
+    # Prepare inventory for this visit
+    weapons_for_sale = list(AVAILABLE_WEAPONS)
+    hats_for_sale = list(AVAILABLE_HATS)
+    
+    town = world.get_town()
+    
+    # Chance for Lore Items in specific towns
+    if "Rich" in town.traits or "Lawless" in town.traits:
+        # 30% chance to see a Lore Item
+        if random.random() < 0.3:
+            potential_lore = [i for i in LORE_ITEMS if i.item_type in [ItemType.WEAPON, ItemType.HAT]]
+            if potential_lore:
+                rare_item = random.choice(potential_lore)
+                # Check if player already has it (unique)
+                has_item = any(i.name == rare_item.name for i in player.inventory)
+                if player.equipped_weapon.name == rare_item.name: has_item = True
+                if player.hat and player.hat.name == rare_item.name: has_item = True
+                
+                if not has_item:
+                    if rare_item.item_type == ItemType.WEAPON:
+                        weapons_for_sale.append(rare_item)
+                    elif rare_item.item_type == ItemType.HAT:
+                        hats_for_sale.append(rare_item)
+
     while True:
         render_hud(player, world)
         print("\n=== GENERAL STORE ===")
@@ -976,37 +1017,63 @@ def visit_store(player, world, robbery=False):
                 
         elif choice == "3":
             print("\nWEAPONS:")
-            for i, w in enumerate(AVAILABLE_WEAPONS):
+            for i, w in enumerate(weapons_for_sale):
                 cost = w.value * markup
-                print(f"{i+1}. {w.name} (Acc: {w.stats['acc']}, Dmg: {w.stats['dmg']}) - ${cost:.2f}")
-            # (Simplified buying logic for brevity)
+                is_lore = w in LORE_ITEMS
+                prefix = "[LEGENDARY] " if is_lore else ""
+                print(f"{i+1}. {prefix}{w.name} (Acc: {w.stats.get('acc',0)}, Dmg: {w.stats.get('dmg',0)}) - ${cost:.2f}")
+                if is_lore:
+                    print(f"   \"{w.description}\"")
+
             try:
                 idx = int(input("Choice: ")) - 1
-                if 0 <= idx < len(AVAILABLE_WEAPONS):
-                    w = AVAILABLE_WEAPONS[idx]
+                if 0 <= idx < len(weapons_for_sale):
+                    w = weapons_for_sale[idx]
                     cost = w.value * markup
                     if player.cash >= cost:
                         player.cash -= cost
-                        player.gun = w
+                        player.gun = w # Assuming player.gun is the equipped weapon
+                        player.equipped_weapon = w # Update both just in case
                         print(f"Bought {w.name}.")
-            except: pass
+                    else:
+                        print("Not enough cash.")
+            except ValueError: pass
 
         elif choice == "4":
             print("\nHATS:")
-            for i, h in enumerate(AVAILABLE_HATS):
+            for i, h in enumerate(hats_for_sale):
                 cost = h.value * markup
-                print(f"{i+1}. {h.name} (Def: {h.stats['def']}, Style: {h.stats['style']}) - ${cost:.2f}")
+                is_lore = h in LORE_ITEMS
+                prefix = "[LEGENDARY] " if is_lore else ""
+                # Handle Hat object vs Item object (Lore items are Items, Hats are Hat objects)
+                # Hat objects have .stats['def'], Item objects have .stats
+                # But wait, LORE_ITEMS are Item objects.
+                # Standard hats are Hat objects.
+                # I need to be careful here.
+                
+                defense = h.stats.get('def', 0)
+                style = h.stats.get('style', 0)
+                # If it's a Hat object, it might have charm_base
+                if hasattr(h, 'charm_base'):
+                    style = h.charm_base
+                
+                print(f"{i+1}. {prefix}{h.name} (Def: {defense}, Style: {style}) - ${cost:.2f}")
+                if is_lore:
+                    print(f"   \"{h.description}\"")
+
             try:
                 idx = int(input("Choice: ")) - 1
-                if 0 <= idx < len(AVAILABLE_HATS):
-                    h = AVAILABLE_HATS[idx]
+                if 0 <= idx < len(hats_for_sale):
+                    h = hats_for_sale[idx]
                     cost = h.value * markup
                     if player.cash >= cost:
                         player.cash -= cost
                         player.hat = h
                         print(f"Bought {h.name}.")
-            except: pass
-            
+                    else:
+                        print("Not enough cash.")
+            except ValueError: pass
+
         elif choice == "B":
             break
 

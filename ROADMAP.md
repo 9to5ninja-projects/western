@@ -61,7 +61,7 @@
     - Racket system (Protection money).
     - Town takeover mechanics (Line Battles).
 
-## Phase 8: Scaling & Variety (In Progress)
+## Phase 8: Scaling & Variety (Completed)
 - [x] **Grand Larceny**:
     - Stagecoach Robbery (Mid-tier heist).
     - Train Robbery (End-game heist, requires specialists).
@@ -70,7 +70,7 @@
     - Selling stolen horses (Fence system - Planned).
 - [x] **Unique Characters**:
     - Distinct Mayors and Sheriffs with personalities.
-- [ ] **Lore Items**:
+- [x] **Lore Items**:
     - Lore-based unique items (Guns, Hats, Horses).
 - [x] **Trophy System**:
     - Collect Sheriff/Deputy badges from kills.
