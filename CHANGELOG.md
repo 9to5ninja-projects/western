@@ -239,5 +239,19 @@ All notable changes to this project will be documented in this file.
     - **Gunslinger**: Deadly in a duel (High Accuracy/Speed).
   - **Dynamic Interactions**: Dialogue and options in Town Hall and Sheriff's Office now reflect the official's personality.
 
+## [0.13.1] - 2025-11-23
+
+### Fixed
+- **Dead Officials Handling**:
+  - **Sheriff**: If a Sheriff is killed, a temporary "Deputy" now mans the desk, allowing continued interaction.
+  - **Mayor**: If a Mayor is killed, players can now call for a "Special Election" to restore order and potentially elect a new NPC.
+- **Bank Functionality**:
+  - Implemented **Deposit** and **Withdraw** features at the bank.
+  - Added `bank_balance` to player stats for safe cash storage.
+- **Stat Progression**:
+  - Capped `Brawl Atk` and `Brawl Def` gains from stable work to 10 to prevent infinite grinding.
+- **Rival Gangs**:
+  - Rival gangs now actively defend the bank in their hideout town during robberies.
+
 
 
