@@ -1240,7 +1240,7 @@ def plan_bank_robbery(player, world):
     targets = []
     
     # Find nearby towns
-    neighbors = world.map.get(world.town_name, {}) # Camp is "near" the last town visited usually, or we abstract it
+    neighbors = world.map.get(world.town_name, {})
     # For simplicity, let's list ALL towns but travel time applies
     
     i = 1
@@ -1927,6 +1927,7 @@ def process_rival_gangs(world):
                                 gang.active = False
                                 world.rumors.append(f"{gang.leader.name} of {gang.name} was killed! The gang has disbanded.")
             
+
             else:
                 # Recruitment
                 if len(gang.members) < 8:
@@ -1934,3 +1935,8 @@ def process_rival_gangs(world):
                     new_member.location = gang.hideout
                     gang.members.append(new_member)
                     world.rumors.append(f"{gang.name} is recruiting in {gang.hideout}.")
+
+
+if __name__ == "__main__":
+    print("Starting Western Legend...")
+    main_menu()

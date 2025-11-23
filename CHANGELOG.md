@@ -219,5 +219,8 @@ All notable changes to this project will be documented in this file.
     - **Ambushes**: Traveling near a gang's hideout risks a road ambush.
     - **Cantina**: Gang members can be found mingling in local cantinas if their gang is in town.
 
+### Fixed
+- **Startup Crash**: Fixed an issue where the game would not launch due to a missing entry point in `main.py`.
+
 
 
