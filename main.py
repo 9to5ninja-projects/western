@@ -755,10 +755,13 @@ def start_brawl(player, world, npc=None):
     renderer.render_duel_state(engine, p1, p2)
     p1.sync_state() # Save HP loss back to player
     
+    # Capture final combat log
+    final_log = engine.log[-3:] if engine.log else []
+    
     if p1.conscious:
         print("\nYOU WON THE BRAWL!")
         
-        log_lines = ["YOU WON THE BRAWL!"]
+        log_lines = final_log + ["", "YOU WON THE BRAWL!"]
         if not p2.alive and npc:
             npc.alive = False
             print("You beat them to death!")
@@ -794,7 +797,9 @@ def start_brawl(player, world, npc=None):
             
     else:
         print("\nYou were knocked out...")
-        renderer.render(log_text=["You were knocked out..."], player=player)
+        
+        log_lines = final_log + ["", "You were knocked out..."]
+        renderer.render(log_text=log_lines, player=player)
         time.sleep(2)
         loss = random.randint(1, 5)
         player.cash = max(0, player.cash - loss)
@@ -936,6 +941,9 @@ def start_duel(player, world, npc=None, is_sheriff=False):
     p1.sync_state()
     renderer.render_duel_state(engine, p1, p2)
     
+    # Capture final combat log
+    final_log = engine.log[-3:] if engine.log else []
+    
     # Check Surrender (Post-Loop)
     if p2.is_surrendering and p1.alive:
         print(f"\n{npc.name} has SURRENDERED!")
@@ -948,7 +956,7 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             surrender_buttons.append({"label": "Recruit", "key": "3"})
             
         renderer.render(
-            log_text=[f"{npc.name} has SURRENDERED!", "Choose fate..."],
+            log_text=final_log + [f"{npc.name} has SURRENDERED!", "Choose fate..."],
             buttons=surrender_buttons
         )
             
@@ -982,7 +990,7 @@ def start_duel(player, world, npc=None, is_sheriff=False):
     elif p1.alive and not p2.alive:
         print("\nVICTORY!")
         
-        log_lines = ["VICTORY!"]
+        log_lines = final_log + ["", "VICTORY!"]
         if npc: npc.alive = False # Mark NPC as dead
         
         if is_sheriff or npc.archetype == "Sheriff":
@@ -1008,7 +1016,7 @@ def start_duel(player, world, npc=None, is_sheriff=False):
 
     elif not p1.alive:
         print("\nDEFEAT.")
-        renderer.render(log_text=["DEFEAT."])
+        renderer.render(log_text=final_log + ["", "DEFEAT."])
         
     wait_for_user()
 
