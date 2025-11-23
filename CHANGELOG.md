@@ -324,6 +324,19 @@ All notable changes to this project will be documented in this file.
   - **View Patrons**: List NPCs in the cantina and buy a round for the house to boost reputation.
   - **The Champ**: A legendary brawler boss fight available for players with high Brawler Rep (>50).
 
+## [0.19.0] - 2025-11-23
+
+### Added
+- **Narrative Reactivity System**:
+  - **Milestone Events**: The world now reacts to player stats with unique encounters during travel, sleep, or work.
+  - **The Challenger**: High Honor duelists may be challenged by "The Kid" seeking glory.
+  - **The Marshal**: High Bounty players (> $500) are hunted by U.S. Marshal Cogburn (Boss Fight).
+  - **The Thief**: Wealthy players (> $500) risk being pickpocketed by "Slick Fingers".
+  - **The Preacher**: Low Honor players are publicly denounced, losing Reputation and Charm.
+- **New Stats**:
+  - `charm_mod`: Tracks temporary or permanent modifiers to the player's Charm stat.
+
+
 
 
 
