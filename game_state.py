@@ -67,6 +67,7 @@ class PlayerState:
         self.honor = 0     # -100 to 100
         self.reputation = 0 # 0 to 100 (Fame/Infamy)
         self.bounty = 0.00
+        self.bank_balance = 0.00 # Safe storage
         
         # Survival Stats
         self.hp = 75 # Base 50 + (5 * 5 Def)

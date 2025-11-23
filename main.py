@@ -845,21 +845,31 @@ def visit_stables(player, world):
         elif choice == "3":
             print("\nYou spend a week hauling heavy bales of hay.")
             player.cash += 2.00
-            player.brawl_atk += 1
+            if player.brawl_atk < 10:
+                player.brawl_atk += 1
+                print("You feel stronger. (+1 Brawl Atk)")
+            else:
+                print("You maintain your strength.")
+                
             player.honor += 1
             world.week += 1
             world.reduce_heat(5) # Good honest work reduces heat
-            print("You earned $2.00 and feel stronger. People respect honest work. (+1 Honor)")
+            print("You earned $2.00. People respect honest work. (+1 Honor)")
             time.sleep(1.5)
             
         elif choice == "4":
             print("\nYou spend a week getting thrown by wild mustangs.")
             player.cash += 3.00
-            player.brawl_def += 1
+            if player.brawl_def < 10:
+                player.brawl_def += 1
+                print("You feel tougher. (+1 Brawl Def)")
+            else:
+                print("You maintain your toughness.")
+                
             player.honor += 1
             world.week += 1
             world.reduce_heat(5)
-            print("You earned $3.00 and feel tougher. (+1 Honor)")
+            print("You earned $3.00. (+1 Honor)")
             time.sleep(1.5)
             
         elif choice == "5":
@@ -1003,6 +1013,18 @@ def visit_store(player, world, robbery=False):
 def visit_sheriff(player, world):
     town = world.get_town()
     sheriff = town.sheriff
+    
+    # Check if Sheriff is dead
+    if sheriff and not sheriff.alive:
+        print("\n=== SHERIFF'S OFFICE ===")
+        print("The Sheriff's desk is empty. The previous Sheriff was killed.")
+        print("A temporary deputy is manning the desk.")
+        
+        # Spawn temporary sheriff for interaction
+        sheriff = NPC("Sheriff")
+        sheriff.name = "Deputy"
+        sheriff.personality = "Lawful" # Deputies are strict
+        
     if not sheriff:
         sheriff = NPC("Sheriff")
         town.sheriff = sheriff
@@ -1398,6 +1420,18 @@ def rob_bank(player, world):
     if "Lawless" in town.traits: base_guards -= 1
     
     guards = [NPC("Sheriff")] + [NPC("Cowboy") for _ in range(max(1, base_guards))]
+    
+    # Check for Rival Gang Control/Presence
+    rival_gang_present = False
+    for g in world.rival_gangs:
+        if g.active and g.hideout == town.name:
+            print(f"\nWARNING: This is {g.name} territory!")
+            print("They are guarding the bank too.")
+            rival_gang_present = True
+            # Add gang members to defenders
+            guards.extend(g.members[:3]) # Up to 3 members join the fight
+            break
+            
     print(f"Guards: {len(guards)}")
     
     # Setup Teams
@@ -1541,6 +1575,7 @@ def visit_mayor(player, world):
             
             options = {
                 "1": "Declare Martial Law (Take Over)",
+                "2": "Call for Special Election (Restore Order)",
                 "B": "Back"
             }
             
@@ -1554,6 +1589,20 @@ def visit_mayor(player, world):
                 else:
                     print("The townsfolk laugh you out of the office.")
                     time.sleep(1)
+            elif choice == "2":
+                print("You organize a town meeting to elect a new mayor.")
+                if random.random() < 0.8:
+                    new_mayor = NPC("Mayor")
+                    town.mayor = new_mayor
+                    town.mayor_status = "Alive"
+                    print(f"The town has elected {new_mayor.name} as the new Mayor.")
+                    print(f"Personality: {new_mayor.personality}")
+                    player.reputation += 10
+                    player.honor += 10
+                else:
+                    print("The meeting ends in a brawl! No mayor elected.")
+                    start_brawl(player, world, NPC("Drunkard"))
+                time.sleep(1)
             elif choice == "B":
                 break
                 
@@ -1686,12 +1735,38 @@ def visit_bank(player, world):
         choice = get_menu_choice(options)
         
         if choice == "1":
-            # Placeholder for deposit logic
-            print("Teller: 'We don't have accounts set up for drifters yet.'")
+            # Deposit Cash
+            print("\n=== DEPOSIT CASH ===")
+            print(f"Current Balance: ${player.bank_balance:.2f}")
+            print(f"Cash on Hand: ${player.cash:.2f}")
+            
+            try:
+                amount = float(input("Amount to deposit: "))
+                if 0 < amount <= player.cash:
+                    player.cash -= amount
+                    player.bank_balance += amount
+                    print(f"Deposited ${amount:.2f}.")
+                else:
+                    print("Invalid amount.")
+            except:
+                print("Invalid input.")
             time.sleep(1)
             
         elif choice == "2":
-            print("Teller: 'You have no account here.'")
+            # Withdraw Cash
+            print("\n=== WITHDRAW CASH ===")
+            print(f"Current Balance: ${player.bank_balance:.2f}")
+            
+            try:
+                amount = float(input("Amount to withdraw: "))
+                if 0 < amount <= player.bank_balance:
+                    player.bank_balance -= amount
+                    player.cash += amount
+                    print(f"Withdrew ${amount:.2f}.")
+                else:
+                    print("Invalid amount.")
+            except:
+                print("Invalid input.")
             time.sleep(1)
             
         elif choice == "3":
