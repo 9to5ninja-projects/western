@@ -29,7 +29,7 @@ def wait_for_user(prompt="Press Enter to continue..."):
     )
     while True:
         key = renderer.get_input()
-        if key == "ENTER":
+        if key in ["ENTER", "SPACE"]:
             break
 
 def main_menu():
@@ -170,12 +170,7 @@ def game_loop(player, world):
         ]
         
         renderer.render(
-            stats_text=[
-                f"Name: {player.name}",
-                f"Cash: ${player.cash:.2f}",
-                f"HP: {player.hp}/{player.max_hp}",
-                f"Town: {world.town_name}"
-            ],
+            player=player,
             log_text=[f"Day {world.week}", f"Location: {player.location}"],
             buttons=town_buttons
         )
@@ -423,12 +418,15 @@ def visit_cantina(player, world):
                 time.sleep(1)
                 
         elif choice == "2":
-            print("\n=== RUMORS ===")
+            # print("\n=== RUMORS ===")
+            log_lines = ["=== RUMORS ==="]
             if not world.rumors:
-                print("It's quiet. Too quiet.")
+                # print("It's quiet. Too quiet.")
+                log_lines.append("It's quiet. Too quiet.")
             else:
                 for r in world.rumors:
-                    print(f"- {r}")
+                    # print(f"- {r}")
+                    log_lines.append(f"- {r}")
             
             # Mingle with Locals
             locals_here = [n for n in world.active_npcs if n.location == world.town_name]
@@ -439,8 +437,10 @@ def visit_cantina(player, world):
                     locals_here.append(g.leader)
                     locals_here.extend(g.members)
             
+            buttons = []
             if locals_here:
-                print("\n=== NOTABLE PEOPLE ===")
+                # print("\n=== NOTABLE PEOPLE ===")
+                log_lines.append("=== NOTABLE PEOPLE ===")
                 for i, n in enumerate(locals_here):
                     # Tag gang members
                     tag = ""
@@ -448,10 +448,21 @@ def visit_cantina(player, world):
                         if g.active and (n == g.leader or n in g.members):
                             tag = f" [{g.name}]"
                             break
-                    print(f"{i+1}. Talk to {n.name} ({n.archetype}){tag}")
+                    # print(f"{i+1}. Talk to {n.name} ({n.archetype}){tag}")
+                    lbl = f"Talk to {n.name}"
+                    buttons.append({"label": lbl, "key": str(i+1)})
                 
-                print("M. Mingle")
-                sub = input("Choice: ").upper()
+                # print("M. Mingle")
+                buttons.append({"label": "Mingle", "key": "M"})
+                
+                renderer.render(
+                    log_text=log_lines,
+                    buttons=buttons
+                )
+                
+                # sub = input("Choice: ").upper()
+                sub = renderer.get_input()
+                
                 if sub == "M":
                     pass # Just looking
                 else:
@@ -459,21 +470,33 @@ def visit_cantina(player, world):
                         idx = int(sub) - 1
                         if 0 <= idx < len(locals_here):
                             target = locals_here[idx]
-                            print(f"\nYou approach {target.name}.")
-                            print(f"{target.name}: '{target.get_line()}'")
+                            # print(f"\nYou approach {target.name}.")
+                            # print(f"{target.name}: '{target.get_line()}'")
+                            
+                            dialogue = [f"You approach {target.name}.", f"{target.name}: '{target.get_line()}'"]
                             
                             if target.bounty > 0:
-                                print(f"(Wanted: ${target.bounty:.2f})")
-                                if input("Attempt to arrest/kill? (Y/N): ").upper() == "Y":
+                                # print(f"(Wanted: ${target.bounty:.2f})")
+                                dialogue.append(f"(Wanted: ${target.bounty:.2f})")
+                                renderer.render(log_text=dialogue + ["Attempt to arrest/kill? (Y/N)"])
+                                
+                                # if input("Attempt to arrest/kill? (Y/N): ").upper() == "Y":
+                                if renderer.get_input() == "Y":
                                     start_duel(player, world, target)
                                     if player.alive and not target.alive:
                                         print(f"You collected the bounty of ${target.bounty:.2f}!")
                                         player.cash += target.bounty
                                         player.reputation += 10
                                         world.active_npcs.remove(target)
+                            else:
+                                renderer.render(log_text=dialogue)
+                                wait_for_user()
                     except: pass
+            else:
+                renderer.render(log_text=log_lines)
+                wait_for_user()
             
-            input("Press Enter...")
+            # input("Press Enter...")
         
         elif choice == "3":
             npc = NPC("Drunkard")
@@ -530,30 +553,52 @@ def visit_cantina(player, world):
 
 def loot_screen(player, world, npc):
     while True:
-        clear_screen()
-        print(f"\n=== LOOTING {npc.name.upper()} ===")
-        print("Taking items is considered theft and dishonorable.")
+        # clear_screen()
+        # print(f"\n=== LOOTING {npc.name.upper()} ===")
+        # print("Taking items is considered theft and dishonorable.")
+        
+        log_lines = [f"=== LOOTING {npc.name.upper()} ===", "Taking items is theft."]
         
         options = {}
+        buttons = []
+        
         if npc.cash > 0:
-            options["1"] = f"Take Cash (${npc.cash:.2f}) - Minor Dishonor"
+            lbl = f"Take Cash (${npc.cash:.2f})"
+            options["1"] = lbl
+            buttons.append({"label": lbl, "key": "1"})
+            
         if npc.weapon:
-            options["2"] = f"Take Weapon ({npc.weapon.name}) - Major Dishonor"
+            lbl = f"Take {npc.weapon.name}"
+            options["2"] = lbl
+            buttons.append({"label": lbl, "key": "2"})
+            
         if npc.hat:
-            options["3"] = f"Take Hat ({npc.hat.name}) - Major Dishonor"
+            lbl = f"Take {npc.hat.name}"
+            options["3"] = lbl
+            buttons.append({"label": lbl, "key": "3"})
         
         # Check for Receipts
         receipts = [i for i in npc.inventory if i.item_type == ItemType.RECEIPT]
         if receipts:
-            options["4"] = f"Loot Bank Drafts ({len(receipts)} found)"
+            lbl = f"Loot Drafts ({len(receipts)})"
+            options["4"] = lbl
+            buttons.append({"label": lbl, "key": "4"})
 
         # Check for Badge
         if npc.archetype == "Sheriff" or npc.name == "Sheriff":
-            options["5"] = "Take Sheriff's Badge (Trophy)"
+            lbl = "Take Badge"
+            options["5"] = lbl
+            buttons.append({"label": lbl, "key": "5"})
 
         options["B"] = "Leave Body"
+        buttons.append({"label": "Leave Body", "key": "B"})
         
-        choice = get_menu_choice(options)
+        renderer.render(
+            log_text=log_lines,
+            buttons=buttons
+        )
+        
+        choice = renderer.get_input()
         
         if choice == "1" and npc.cash > 0:
             player.cash += npc.cash
@@ -561,45 +606,43 @@ def loot_screen(player, world, npc):
             npc.cash = 0
             player.honor -= 2
             world.add_heat(5)
-            time.sleep(1)
+            # time.sleep(1)
         elif choice == "2" and npc.weapon:
             player.add_item(npc.weapon)
             print(f"You took the {npc.weapon.name}.")
             npc.weapon = None
             player.honor -= 10
             world.add_heat(15)
-            time.sleep(1)
+            # time.sleep(1)
         elif choice == "3" and npc.hat:
             player.add_item(npc.hat)
             print(f"You took the {npc.hat.name}.")
             npc.hat = None
             player.honor -= 10
             world.add_heat(10)
-            time.sleep(1)
+            # time.sleep(1)
         elif choice == "4" and receipts:
             for r in receipts:
                 player.add_item(r)
-                print(f"You took {r.name}.")
+            print(f"You took {len(receipts)} bank drafts.")
             npc.inventory = [i for i in npc.inventory if i.item_type != ItemType.RECEIPT]
             player.honor -= 5
-            time.sleep(1)
-        elif choice == "5":
-            badge = Item("Sheriff's Badge", ItemType.TROPHY, 0, description="A bloodstained star.")
-            player.add_item(badge)
-            print("You took the badge. A grim trophy.")
-            player.reputation += 5
-            player.honor -= 5
-            # Prevent taking it again?
-            npc.archetype = "Corpse" # Hack to remove the option next loop
-            time.sleep(1)
+            world.add_heat(10)
+        elif choice == "5" and (npc.archetype == "Sheriff" or npc.name == "Sheriff"):
+            print("You took the Sheriff's Badge.")
+            # Add badge item?
+            player.honor -= 20
+            world.add_heat(50)
+            # Remove badge from npc logic if implemented
         elif choice == "B":
+            print("You leave the body.")
             break
 
 def start_brawl(player, world, npc=None):
     if not npc: npc = NPC("Drunkard")
     
     print(f"\nYou get into a scrap with {npc.name} ({npc.archetype})!")
-    input("FIGHT ON! (Press Enter)")
+    wait_for_user("FIGHT ON!")
     
     # Create Combatants
     p1 = Combatant(player.name, -1, player)
@@ -681,11 +724,24 @@ def start_brawl(player, world, npc=None):
             
     else:
         print("\nYou were knocked out...")
-        renderer.render(log_text=["You were knocked out..."])
+        renderer.render(log_text=["You were knocked out..."], player=player)
         time.sleep(2)
         loss = random.randint(1, 5)
         player.cash = max(0, player.cash - loss)
         print(f"You wake up with ${loss} less.")
+        
+        # Knockout Consequences
+        world.week += 1
+        if player.weeks_rent_paid > 0:
+            player.weeks_rent_paid -= 1
+            player.hp = min(player.max_hp, player.hp + 10) # Some recovery
+            renderer.render(log_text=[f"You wake up in your room.", f"Lost ${loss}. Week passed."], player=player)
+        else:
+            player.hp = min(player.max_hp, player.hp + 5)
+            renderer.render(log_text=[f"You wake up in the dirt.", f"Lost ${loss}. Week passed."], player=player)
+            
+        wait_for_user()
+        return # End brawl function
         
     wait_for_user()
 
@@ -694,7 +750,7 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         npc = NPC("Sheriff" if is_sheriff else "Outlaw")
         
     print(f"\nYou challenge {npc.name} ({npc.archetype}) to a duel!")
-    input("WALK OUT (Press Enter)")
+    wait_for_user("WALK OUT")
     
     p1 = Combatant(player.name, -1, player)
     p2 = Combatant(npc.name, 1)
@@ -710,16 +766,24 @@ def start_duel(player, world, npc=None, is_sheriff=False):
     # Duel Loop
     turn_count = 0
     while p1.alive and p2.alive and turn_count < 20:
-        engine.render()
+        # engine.render()
+        renderer.render_duel_state(engine, p1, p2)
         
         # Check if opponent surrendered in PREVIOUS turn
         if p2.is_surrendering:
             print(f"\n{p2.name} is asking for mercy!")
-            print("[1] Accept Surrender (End Fight)")
-            print("[2] Demand Loot (Conditional)")
-            print("[3] Ignore & Attack (Dishonorable)")
             
-            sub = input("Choice: ")
+            surrender_buttons = [
+                {"label": "Accept Surrender", "key": "1"},
+                {"label": "Demand Loot", "key": "2"},
+                {"label": "Ignore & Attack", "key": "3"}
+            ]
+            renderer.render(
+                log_text=[f"{p2.name} is asking for mercy!", "Choose fate..."],
+                buttons=surrender_buttons
+            )
+            
+            sub = renderer.get_input()
             if sub == "1":
                 print("You lower your weapon.")
                 p2.conscious = False # End loop gracefully
@@ -741,18 +805,38 @@ def start_duel(player, world, npc=None, is_sheriff=False):
                 # Continue to action selection
         
         # Player Menu
-        print("\n[1] PACE   [2] TURN   [3] DRAW   [4] SHOOT CENTER")
-        print("[5] SHOOT HIGH [6] SHOOT LOW [7] RELOAD [8] DUCK")
-        print("[9] SURRENDER [0] STEP IN [J] JUMP")
+        # print("\n[1] PACE   [2] TURN   [3] DRAW   [4] SHOOT CENTER")
+        # print("[5] SHOOT HIGH [6] SHOOT LOW [7] RELOAD [8] DUCK")
+        # print("[9] SURRENDER [0] STEP IN [J] JUMP")
         
-        special = "[D] DUCK & SHOOT [R] RISE & SHOOT"
+        special = "[D] DUCK&SHOOT [R] RISE&SHOOT"
         if p1.orientation == Orientation.FACING_OPPONENT and engine.get_distance() <= 3:
-            special += " [K] KICK SAND"
+            special += " [K] SAND"
         if engine.get_distance() <= 2:
             special += " [P] PUNCH"
-        print(special)
+        # print(special)
         
-        choice = input("Action: ").upper()
+        # Define primary buttons for GUI (limited space)
+        duel_buttons = [
+            {"label": "SHOOT CENTER", "key": "4"},
+            {"label": "DRAW / RELOAD", "key": "3/7"},
+            {"label": "PACE / TURN", "key": "1/2"},
+            {"label": "DUCK / JUMP", "key": "8/J"}
+        ]
+        
+        log_lines = engine.log[-3:] if engine.log else ["Duel started."]
+        log_lines.append("Actions: [1]Pace [2]Turn [3]Draw [4]Shoot")
+        log_lines.append("         [5]High [6]Low [7]Reload [8]Duck")
+        log_lines.append(f"Special: {special}")
+        
+        renderer.render(
+            stats_text=[f"{p1.name}: {p1.hp} HP | {p1.ammo} Ammo", f"{p2.name}: {p2.hp} HP"],
+            log_text=log_lines,
+            buttons=duel_buttons
+        )
+        
+        choice = renderer.get_input()
+        
         map_act = {
             "1": Action.PACE, "2": Action.TURN, "3": Action.DRAW,
             "4": Action.SHOOT_CENTER, "5": Action.SHOOT_HIGH,
@@ -771,6 +855,7 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         # Check if Player Surrendered and AI Accepted
         if p1.is_surrendering and p2_act == Action.WAIT:
             print(f"\n{p2.name} accepts your surrender.")
+            renderer.render(log_text=[f"{p2.name} accepts your surrender."])
             p1.conscious = False # End loop
             # Consequences?
             loss = random.randint(5, 15)
@@ -779,19 +864,28 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             break
             
         turn_count += 1
-        time.sleep(1.5)
+        # time.sleep(1.5)
         
     p1.sync_state()
+    renderer.render_duel_state(engine, p1, p2)
     
     # Check Surrender (Post-Loop)
     if p2.is_surrendering and p1.alive:
         print(f"\n{npc.name} has SURRENDERED!")
-        print("1. Execute")
-        print("2. Let go")
+        
+        surrender_buttons = [
+            {"label": "Execute", "key": "1"},
+            {"label": "Let go", "key": "2"}
+        ]
         if player.is_gang_leader or player.is_deputy:
-            print("3. Recruit")
+            surrender_buttons.append({"label": "Recruit", "key": "3"})
             
-        choice = input("Choice: ")
+        renderer.render(
+            log_text=[f"{npc.name} has SURRENDERED!", "Choose fate..."],
+            buttons=surrender_buttons
+        )
+            
+        choice = renderer.get_input()
         if choice == "1":
             print("You pull the trigger.")
             npc.alive = False
@@ -820,6 +914,9 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             
     elif p1.alive and not p2.alive:
         print("\nVICTORY!")
+        renderer.render(log_text=["VICTORY!"])
+        time.sleep(2)
+        
         if npc: npc.alive = False # Mark NPC as dead
         
         if is_sheriff or npc.archetype == "Sheriff":
@@ -831,13 +928,15 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             player.honor -= 5 
             player.reputation += 10
             
-            if input("Loot them? (Y/N): ").upper() == "Y":
+            renderer.render(log_text=["Loot them? (Y/N)"])
+            if renderer.get_input() == "Y":
                 loot_screen(player, world, npc)
 
     elif not p1.alive:
         print("\nDEFEAT.")
+        renderer.render(log_text=["DEFEAT."])
         
-    input("Press Enter...")
+    wait_for_user()
 
 def handle_death(player, world):
     print("\n\n YOU HAVE DIED.")
@@ -862,69 +961,171 @@ def handle_death(player, world):
         sys.exit()
 
 def visit_doctor(player, world):
-    clear_screen()
-    print("DOCTOR")
-    
-    # Heal HP
-    if player.hp < player.max_hp:
-        cost = (player.max_hp - player.hp) * 0.1
-        print(f"Heal Wounds (HP) to full for ${cost:.2f}?")
-        if input("Y/N: ").upper() == "Y":
-            if player.cash >= cost:
-                player.cash -= cost
+    while True:
+        # clear_screen()
+        # print("DOCTOR")
+        
+        log_lines = ["The Doctor is in."]
+        options = {}
+        buttons = []
+        
+        # Heal HP
+        heal_cost = 0
+        if player.hp < player.max_hp:
+            heal_cost = (player.max_hp - player.hp) * 0.1
+            lbl = f"Heal Wounds (${heal_cost:.2f})"
+            options["1"] = lbl
+            buttons.append({"label": lbl, "key": "1"})
+        else:
+            log_lines.append("You are healthy.")
+
+        # Treat Injuries
+        injury_cost = 0
+        injury_to_treat = None
+        
+        if player.injuries:
+            # Just treat the first one for simplicity in this menu loop
+            inj = player.injuries[0]
+            injury_to_treat = inj
+            
+            if "Broken Hand" in inj:
+                injury_cost = 25.00
+                lbl = f"Cast {inj} (${injury_cost:.2f})"
+            else:
+                injury_cost = 15.00
+                lbl = f"Treat {inj} (${injury_cost:.2f})"
+            
+            options["2"] = lbl
+            buttons.append({"label": lbl, "key": "2"})
+            
+        options["B"] = "Back"
+        buttons.append({"label": "Back", "key": "B"})
+        
+        renderer.render(
+            stats_text=[f"Cash: ${player.cash:.2f}", f"HP: {player.hp}/{player.max_hp}"],
+            log_text=log_lines,
+            buttons=buttons
+        )
+        
+        choice = renderer.get_input()
+        
+        if choice == "1" and player.hp < player.max_hp:
+            if player.cash >= heal_cost:
+                player.cash -= heal_cost
                 player.hp = player.max_hp
                 player.blood = player.max_blood
                 print("Healed.")
+                renderer.render(log_text=["Healed to full health."])
+                # time.sleep(1)
             else:
                 print("Not enough cash.")
-
-    # Treat Injuries
-    if player.injuries:
-        print("\nTREATING INJURIES:")
-        # Create a copy to iterate safely while modifying
-        for inj in list(player.injuries):
-            if "Broken Hand" in inj:
-                cost = 25.00
-                print(f"- {inj} (Requires Cast: ${cost:.2f}, 6-8 Weeks)")
-                if input("Cast? (Y/N): ").upper() == "Y":
-                    if player.cash >= cost:
-                        player.cash -= cost
-                        duration = random.randint(6, 8)
-                        player.healing_injuries[inj] = duration
-                        player.injuries.remove(inj)
-                        print("Hand casted. It will heal in time.")
-                    else:
-                        print("Not enough cash.")
+                renderer.render(log_text=["Not enough cash."])
+                # time.sleep(1)
+                
+        elif choice == "2" and injury_to_treat:
+            if player.cash >= injury_cost:
+                player.cash -= injury_cost
+                
+                if "Broken Hand" in injury_to_treat:
+                    duration = random.randint(6, 8)
+                    player.healing_injuries[injury_to_treat] = duration
+                    player.injuries.remove(injury_to_treat)
+                    print("Hand casted.")
+                    renderer.render(log_text=["Hand casted. It will heal in time."])
+                else:
+                    player.injuries.remove(injury_to_treat)
+                    print("Treated.")
+                    renderer.render(log_text=["Injury treated."])
+                # time.sleep(1)
             else:
-                cost = 15.00 
-                print(f"- {inj} (Cost: ${cost:.2f})")
-                if input("Treat? (Y/N): ").upper() == "Y":
-                    if player.cash >= cost:
-                        player.cash -= cost
-                        player.injuries.remove(inj)
-                        print("Treated.")
-                    else:
-                        print("Not enough cash.")
-                    
-    input("Press Enter...")
+                print("Not enough cash.")
+                renderer.render(log_text=["Not enough cash."])
+                # time.sleep(1)
+                
+        elif choice == "B":
+            break
 
 def sleep(player, world):
-    world.week += 1
-    world.time_of_day = "Morning"
-    player.hp = min(player.max_hp, player.hp + 20)
-    player.blood = min(player.max_blood, player.blood + 2)
-    
-    # World Simulation
-    update_world_simulation(world)
-    
-    # Rent Check
-    if player.weeks_rent_paid > 0:
-        player.weeks_rent_paid -= 1
-        print("You rested for a week. Wounds are healing.")
-    else:
-        print("You slept in the dirt. It was rough.")
-        player.hp = min(player.max_hp, player.hp + 5) # Less healing
+    while True:
+        log_lines = []
+        buttons = []
         
+        # Rent Status
+        if player.weeks_rent_paid > 0:
+            log_lines.append(f"Rent paid for {player.weeks_rent_paid} more weeks.")
+            log_lines.append("Sleep until morning?")
+            buttons.append({"label": "Sleep (1 Week)", "key": "1"})
+        else:
+            log_lines.append("You have no room rented.")
+            log_lines.append("Rent a room for $5.00 / week?")
+            buttons.append({"label": "Rent Room ($5)", "key": "1"})
+            buttons.append({"label": "Sleep Outside (Free)", "key": "2"})
+            
+        buttons.append({"label": "Back", "key": "B"})
+        
+        renderer.render(
+            player=player,
+            log_text=log_lines,
+            buttons=buttons
+        )
+        
+        choice = renderer.get_input()
+        
+        if choice == "1":
+            if player.weeks_rent_paid > 0:
+                # Already rented, just sleep
+                world.week += 1
+                world.time_of_day = "Morning"
+                player.hp = min(player.max_hp, player.hp + 20)
+                player.blood = min(player.max_blood, player.blood + 2)
+                player.weeks_rent_paid -= 1
+                
+                update_world_simulation(world)
+                process_healing(player)
+                
+                renderer.render(log_text=["You rested well.", "HP and Blood recovered."], player=player)
+                wait_for_user()
+                
+                # Ask to Save
+                renderer.render(log_text=["Save Game? (Y/N)"], player=player)
+                if renderer.get_input() == "Y":
+                    save_game(player, world)
+                return
+            else:
+                # Renting
+                if player.cash >= 5.00:
+                    player.cash -= 5.00
+                    player.weeks_rent_paid = 4 # Pay for a month? Or just 1 week? Let's say 4 weeks for $5 is too cheap.
+                    # Let's make it 1 week for $5.
+                    player.weeks_rent_paid = 1
+                    print("Room rented.")
+                    # Loop back to show "Sleep" option now
+                else:
+                    renderer.render(log_text=["Not enough cash."], player=player)
+                    wait_for_user()
+                    
+        elif choice == "2" and player.weeks_rent_paid == 0:
+            # Sleep Outside
+            world.week += 1
+            world.time_of_day = "Morning"
+            player.hp = min(player.max_hp, player.hp + 5) # Less healing
+            
+            update_world_simulation(world)
+            process_healing(player)
+            
+            renderer.render(log_text=["You slept in the dirt.", "It was rough."], player=player)
+            wait_for_user()
+            
+            # Ask to Save
+            renderer.render(log_text=["Save Game? (Y/N)"], player=player)
+            if renderer.get_input() == "Y":
+                save_game(player, world)
+            return
+            
+        elif choice == "B":
+            return
+
+def process_healing(player):
     # Healing Injuries
     if player.healing_injuries:
         for inj in list(player.healing_injuries.keys()):
@@ -934,12 +1135,6 @@ def sleep(player, world):
                 print(f"Your {inj} has fully healed!")
             else:
                 print(f"{inj} is healing... ({player.healing_injuries[inj]} weeks left)")
-
-    # Ask to Save
-    if input("Save Game? (Y/N): ").upper() == "Y":
-        save_game(player, world)
-
-    input("Press Enter...")
 
 def visit_stables(player, world):
     # Prepare horses
@@ -2146,6 +2341,7 @@ def attempt_takeover(player, world):
         # Loot
         loot = 500
         if "Rich" in town.traits: loot = 1000
+        if "Poor" in town.traits: loot = 100
         print(f"You seize the town treasury: ${loot}")
         player.cash += loot
         
@@ -2281,7 +2477,6 @@ def process_rival_gangs(world):
                                 gang.active = False
                                 world.rumors.append(f"{gang.leader.name} of {gang.name} was killed! The gang has disbanded.")
             
-
             else:
                 # Recruitment
                 if len(gang.members) < 8:
@@ -2289,3 +2484,6 @@ def process_rival_gangs(world):
                     new_member.location = gang.hideout
                     gang.members.append(new_member)
                     world.rumors.append(f"{gang.name} is recruiting in {gang.hideout}.")
+
+if __name__ == "__main__":
+    main_menu()

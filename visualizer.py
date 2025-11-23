@@ -4,7 +4,7 @@ import tkinter as tk
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
 # Configuration
-SCREEN_WIDTH = 800
+SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 600
 SCENE_WIDTH = 640
 SCENE_HEIGHT = 380
@@ -85,12 +85,18 @@ class SceneRenderer:
             
     def _on_key(self, event):
         # Store the key press
+        # print(f"DEBUG: Key pressed: {event.keysym} char: {repr(event.char)}")
+        
         if event.char and event.char.isprintable():
-            self.last_key = event.char
+            self.last_key = event.char.upper() # Force upper case for consistency
+        
         # Handle special keys
-        if event.keysym == "Return": self.last_key = "ENTER"
+        if event.keysym in ["Return", "KP_Enter"]: self.last_key = "ENTER"
         if event.keysym == "Escape": self.last_key = "ESC"
         if event.keysym == "BackSpace": self.last_key = "BACKSPACE"
+        if event.keysym == "space": self.last_key = "SPACE" # Explicit space
+        
+        # print(f"DEBUG: Resolved to: {self.last_key}")
 
     def get_input(self):
         """Blocking call to wait for a key press from the window"""
@@ -157,7 +163,7 @@ class SceneRenderer:
             draw.text((5, 40), actor.name[:4], fill="white", font=self.font)
             return img
 
-    def render(self, stats_text=None, log_text=None, buttons=None):
+    def render(self, stats_text=None, log_text=None, buttons=None, player=None):
         """Composite the final frame"""
         # 1. Create Base Canvas
         canvas = Image.new("RGB", (SCREEN_WIDTH, SCREEN_HEIGHT), (20, 20, 20))
@@ -174,6 +180,10 @@ class SceneRenderer:
             w, h = sprite.size
             pos_x = int(actor.x - w/2)
             pos_y = int(actor.y - h)
+            
+            # Ensure sprite is within bounds (roughly)
+            if pos_x < -50 or pos_x > SCENE_WIDTH + 50: continue
+            
             canvas.paste(sprite, (pos_x, pos_y), sprite)
 
         # 4. Draw UI Layout (Mockup style)
@@ -182,19 +192,85 @@ class SceneRenderer:
         # Sidebar (Stats)
         draw.rectangle([SCENE_WIDTH + 10, 10, SCREEN_WIDTH - 10, SCENE_HEIGHT], outline="white")
         draw.text((SCENE_WIDTH + 20, 20), "STATS", fill="yellow", font=self.font)
-        if stats_text:
+        
+        if player:
+            # Detailed Player Stats
+            x = SCENE_WIDTH + 20
+            y = 50
+            line_height = 20
+            
+            # Name & Cash
+            draw.text((x, y), f"NAME: {player.name}", fill="white", font=self.font)
+            y += line_height
+            draw.text((x, y), f"CASH: ${player.cash:.2f}", fill="lightgreen", font=self.font)
+            y += line_height + 5
+            
+            # Honor & Bounty
+            honor_str = "Neutral"
+            if player.honor > 20: honor_str = "Honorable"
+            if player.honor < -20: honor_str = "Outlaw"
+            draw.text((x, y), f"HONOR: {player.honor} ({honor_str})", fill="white", font=self.font)
+            y += line_height
+            draw.text((x, y), f"BOUNTY: ${player.bounty:.2f}", fill="red", font=self.font)
+            y += line_height + 5
+            
+            # HP & Blood
+            draw.text((x, y), f"HP: {player.hp}/{player.max_hp}", fill="white", font=self.font)
+            y += line_height
+            blood_str = "O" * player.blood
+            draw.text((x, y), f"BLOOD: {blood_str}", fill="red", font=self.font)
+            y += line_height + 5
+            
+            # Stats
+            draw.text((x, y), f"ACC: {player.get_acc()} SPD: {player.get_spd()} CHM: {player.charm}", fill="cyan", font=self.font)
+            y += line_height
+            draw.text((x, y), f"BRAWL: {player.brawl_atk}/{player.brawl_def}", fill="cyan", font=self.font)
+            y += line_height + 5
+            
+            # Equip
+            wpn = player.equipped_weapon.name if player.equipped_weapon else "None"
+            draw.text((x, y), f"WPN: {wpn}", fill="white", font=self.font)
+            y += line_height
+            draw.text((x, y), f"AMMO: {player.ammo}", fill="white", font=self.font)
+            y += line_height
+            
+            horse = player.horse.name if player.horse else "None"
+            draw.text((x, y), f"HORSE: {horse}", fill="white", font=self.font)
+            y += line_height
+            
+            hat = player.hat.name if player.hat else "None"
+            draw.text((x, y), f"HAT: {hat}", fill="white", font=self.font)
+            y += line_height
+            
+            draw.text((x, y), f"RENT: {player.weeks_rent_paid} wks", fill="white", font=self.font)
+            y += line_height + 5
+            
+            # Injuries
+            if player.injuries:
+                draw.text((x, y), "INJURIES:", fill="red", font=self.font)
+                y += line_height
+                for inj in player.injuries[:3]: # Limit to 3
+                    draw.text((x, y), f"- {inj}", fill="red", font=self.font)
+                    y += line_height
+            else:
+                draw.text((x, y), "No Injuries", fill="green", font=self.font)
+
+        elif stats_text:
             y_off = 50
             for line in stats_text:
                 draw.text((SCENE_WIDTH + 20, y_off), line, fill="white", font=self.font)
                 y_off += 20
 
         # Bottom Panel (Log)
-        draw.rectangle([10, SCENE_HEIGHT + 10, SCENE_WIDTH, SCREEN_HEIGHT - 10], outline="white")
+        # Fill background to prevent ghosting/overlap if canvas wasn't cleared (it is, but just in case)
+        draw.rectangle([10, SCENE_HEIGHT + 10, SCENE_WIDTH, SCREEN_HEIGHT - 10], fill=(20, 20, 20), outline="white")
         draw.text((20, SCENE_HEIGHT + 20), "LOG", fill="yellow", font=self.font)
         if log_text:
             y_off = SCENE_HEIGHT + 50
             # Show last 8 lines
             for line in log_text[-8:]:
+                # Simple truncation to prevent overflow
+                if len(line) > 80: line = line[:77] + "..."
                 draw.text((20, y_off), line, fill="white", font=self.font)
                 y_off += 20
 
@@ -241,8 +317,16 @@ class SceneRenderer:
         center_x = SCENE_WIDTH // 2
         scale_x = 15 # Pixels per unit
         
-        p1_x = center_x + (p1.position * scale_x)
-        p2_x = center_x + (p2.position * scale_x)
+        # Ensure positions are within reasonable bounds for display
+        # If distance is very small (brawl), separate them visually
+        dist = abs(p1.position - p2.position)
+        if dist < 2:
+            # Force visual separation for brawl
+            p1_x = center_x - 40
+            p2_x = center_x + 40
+        else:
+            p1_x = center_x + (p1.position * scale_x)
+            p2_x = center_x + (p2.position * scale_x)
         
         # Determine Sprites
         p1_state = "idle"
