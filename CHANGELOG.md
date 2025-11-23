@@ -128,3 +128,14 @@ All notable changes to this project will be documented in this file.
     - **Instant Death**: Dealing >30% of opponent's Max HP in one hit.
 - **Dirty Moves Refinement**:
   - **Kick Sand**: Now requires facing the opponent and being within 3 spaces. Success chance reduced to 35%.
+
+## [0.7.0] - 2025-11-23
+
+### Added
+- **Brawl Combat Triangle (RPS System)**:
+  - **Tactical Depth**: Brawling now follows a Rock-Paper-Scissors counter system.
+    - **Jab beats Hook**: A fast jab interrupts the slower hook animation.
+    - **Hook beats Block**: A heavy hook smashes through a defensive guard.
+    - **Block beats Jab**: A successful block stops the jab and triggers an automatic counter-attack.
+  - **New Action**: `BLOCK` added to the brawl menu.
+  - **AI Update**: Opponents now utilize blocking and the full range of melee attacks.

@@ -364,18 +364,19 @@ def start_brawl(player, world, npc=None):
         
         # Player Action
         print("\n[1] JAB (Off-hand, Fast)   [2] HOOK (Dominant, Strong)")
-        print("[3] BLOCK/WAIT")
+        print("[3] BLOCK (Counters Jab, Weak to Hook)")
         act = input("Action: ")
         
         if act == "1": p1_act = Action.JAB
         elif act == "2": p1_act = Action.HOOK
+        elif act == "3": p1_act = Action.BLOCK
         else: p1_act = Action.WAIT
         
         # AI Action
         roll = random.random()
-        if roll < 0.4: p2_act = Action.JAB
-        elif roll < 0.7: p2_act = Action.HOOK
-        else: p2_act = Action.WAIT
+        if roll < 0.33: p2_act = Action.JAB
+        elif roll < 0.66: p2_act = Action.HOOK
+        else: p2_act = Action.BLOCK
         
         engine.run_turn(p1_act, p2_act)
         time.sleep(1)

@@ -43,6 +43,7 @@ class Action(Enum):
     PUNCH = "punch"
     JAB = "jab"             # Off-hand punch (Accurate, Low Dmg)
     HOOK = "hook"           # Dominant punch (High Dmg, Low Acc)
+    BLOCK = "block"         # Blocks Jab, loses to Hook
     SURRENDER = "surrender"
     WAIT = "wait"
 
@@ -319,6 +320,7 @@ class DuelEngineV2:
         if attacker.weapon_state == WeaponState.DRAWN and hand_used == attacker.dominant_hand:
              return "Cannot punch with gun hand!"
              
+
         if attacker.body_parts[hand_used] <= 0:
             return f"Cannot punch with broken {hand_used.value}!"
 
@@ -532,6 +534,9 @@ class DuelEngineV2:
             res = self.resolve_punch(actor, target, Action.HOOK)
             msgs.append(res)
 
+        elif action == Action.BLOCK:
+            msgs.append(f"{actor.name} raises their guard.")
+
         elif action == Action.SURRENDER:
             actor.is_surrendering = True
             actor.weapon_state = WeaponState.HOLSTERED # Put gun away to show intent
@@ -552,13 +557,42 @@ class DuelEngineV2:
         self.turn += 1
         self.log.append(f"\n--- TURN {self.turn} ---")
         
-        # Simultaneous Execution
-        # We calculate results based on state at START of turn, but apply them.
-        # Actually, some actions might interrupt others?
-        # For MVP, let's just execute P1 then P2, but check survival.
+        # RPS Logic (Jab > Hook > Block > Jab)
+        p1_override = None
+        p2_override = None
         
-        msgs1 = self.execute_action(self.p1, a1, self.p2)
-        msgs2 = self.execute_action(self.p2, a2, self.p1)
+        # 1. Jab > Hook
+        if a1 == Action.JAB and a2 == Action.HOOK:
+            self.log.append(f"RPS: JAB beats HOOK! {self.p2.name} is interrupted.")
+            p2_override = Action.WAIT # Cancel Hook
+        elif a2 == Action.JAB and a1 == Action.HOOK:
+            self.log.append(f"RPS: JAB beats HOOK! {self.p1.name} is interrupted.")
+            p1_override = Action.WAIT
+            
+        # 2. Hook > Block
+        elif a1 == Action.HOOK and a2 == Action.BLOCK:
+            self.log.append(f"RPS: HOOK breaks BLOCK! {self.p2.name}'s guard is crushed.")
+            p2_override = Action.WAIT # Block fails
+        elif a2 == Action.HOOK and a1 == Action.BLOCK:
+            self.log.append(f"RPS: HOOK breaks BLOCK! {self.p1.name}'s guard is crushed.")
+            p1_override = Action.WAIT
+            
+        # 3. Block > Jab (Counter-attack)
+        elif a1 == Action.BLOCK and a2 == Action.JAB:
+            self.log.append(f"RPS: BLOCK stops JAB! {self.p1.name} counters!")
+            p2_override = Action.WAIT # Jab blocked
+            p1_override = Action.JAB # Counter-attack
+        elif a2 == Action.BLOCK and a1 == Action.JAB:
+            self.log.append(f"RPS: BLOCK stops JAB! {self.p2.name} counters!")
+            p1_override = Action.WAIT
+            p2_override = Action.JAB
+
+        # Execute
+        final_a1 = p1_override if p1_override else a1
+        final_a2 = p2_override if p2_override else a2
+        
+        msgs1 = self.execute_action(self.p1, final_a1, self.p2)
+        msgs2 = self.execute_action(self.p2, final_a2, self.p1)
         
         self.log.extend(msgs1)
         self.log.extend(msgs2)
