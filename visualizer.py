@@ -112,12 +112,12 @@ class SceneRenderer:
         
         return self.last_key
 
-    def get_text_input(self, prompt="Enter text:"):
+    def get_text_input(self, prompt="Enter text:", player=None):
         """Capture string input from the user"""
         current_text = ""
         while True:
             # Render current state
-            self.render(log_text=[prompt, f"> {current_text}_"])
+            self.render(log_text=[prompt, f"> {current_text}_"], player=player)
             
             key = self.get_input()
             

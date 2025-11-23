@@ -99,6 +99,17 @@ def main_menu():
                     if not hasattr(town, "jail"): town.jail = []
                     if not hasattr(town, "gang_control"): town.gang_control = False
 
+                # MIGRATION: Fix old player saves
+                if not hasattr(player, "bank_balance"): player.bank_balance = 0.00
+                if not hasattr(player, "weeks_rent_paid"): player.weeks_rent_paid = 0
+                if not hasattr(player, "healing_injuries"): player.healing_injuries = {}
+                if not hasattr(player, "is_deputy"): player.is_deputy = False
+                if not hasattr(player, "is_gang_leader"): player.is_gang_leader = False
+                if not hasattr(player, "camp_established"): player.camp_established = False
+                if not hasattr(player, "gang"): player.gang = []
+                if not hasattr(player, "dominant_hand"): player.dominant_hand = "right"
+                if not hasattr(player, "luck_base"): player.luck_base = 30
+
                 print(f"Welcome back, {player.name}.")
                 time.sleep(1)
                 game_loop(player, world)
@@ -2237,7 +2248,7 @@ def visit_mayor(player, world):
 def visit_bank(player, world):
     while True:
         render_hud(player, world)
-        print("\n=== FIRST NATIONAL BANK ===")
+        # print("\n=== FIRST NATIONAL BANK ===")
         
         # Check for receipts
         receipts = [i for i in player.inventory if i.item_type == ItemType.RECEIPT]
@@ -2251,56 +2262,104 @@ def visit_bank(player, world):
         if receipts:
             options["3"] = f"Cash Bank Drafts ({len(receipts)} available)"
             
+        renderer.render(
+            player=player,
+            stats_text=[f"Bank Balance: ${player.bank_balance:.2f}", f"Cash on Hand: ${player.cash:.2f}"],
+            log_text=["=== FIRST NATIONAL BANK ===", "Iron bars and stacks of cash."],
+            buttons=options_to_buttons(options)
+        )
+        
         choice = get_menu_choice(options)
         
         if choice == "1":
             # Deposit Cash
-            print("\n=== DEPOSIT CASH ===")
-            print(f"Current Balance: ${player.bank_balance:.2f}")
-            print(f"Cash on Hand: ${player.cash:.2f}")
+            # print("\n=== DEPOSIT CASH ===")
+            # print(f"Current Balance: ${player.bank_balance:.2f}")
+            # print(f"Cash on Hand: ${player.cash:.2f}")
             
             try:
-                amount = float(input("Amount to deposit: "))
+                # amount = float(input("Amount to deposit: "))
+                prompt = f"Deposit Amount (Max ${player.cash:.2f}):"
+                inp = renderer.get_text_input(prompt, player=player)
+                if not inp: continue
+                
+                amount = float(inp)
                 if 0 < amount <= player.cash:
                     player.cash -= amount
                     player.bank_balance += amount
-                    print(f"Deposited ${amount:.2f}.")
+                    # print(f"Deposited ${amount:.2f}.")
+                    renderer.render(log_text=[f"Deposited ${amount:.2f}."], player=player)
+                    wait_for_user(player=player)
                 else:
-                    print("Invalid amount.")
+                    # print("Invalid amount.")
+                    renderer.render(log_text=["Invalid amount."], player=player)
+                    wait_for_user(player=player)
             except:
-                print("Invalid input.")
-            time.sleep(1)
+                # print("Invalid input.")
+                renderer.render(log_text=["Invalid input."], player=player)
+                wait_for_user(player=player)
+            # time.sleep(1)
             
         elif choice == "2":
             # Withdraw Cash
-            print("\n=== WITHDRAW CASH ===")
-            print(f"Current Balance: ${player.bank_balance:.2f}")
+            # print("\n=== WITHDRAW CASH ===")
+            # print(f"Current Balance: ${player.bank_balance:.2f}")
             
             try:
-                amount = float(input("Amount to withdraw: "))
+                # amount = float(input("Amount to withdraw: "))
+                prompt = f"Withdraw Amount (Max ${player.bank_balance:.2f}):"
+                inp = renderer.get_text_input(prompt, player=player)
+                if not inp: continue
+                
+                amount = float(inp)
                 if 0 < amount <= player.bank_balance:
                     player.bank_balance -= amount
                     player.cash += amount
-                    print(f"Withdrew ${amount:.2f}.")
+                    # print(f"Withdrew ${amount:.2f}.")
+                    renderer.render(log_text=[f"Withdrew ${amount:.2f}."], player=player)
+                    wait_for_user(player=player)
                 else:
-                    print("Invalid amount.")
+                    # print("Invalid amount.")
+                    renderer.render(log_text=["Invalid amount."], player=player)
+                    wait_for_user(player=player)
             except:
-                print("Invalid input.")
-            time.sleep(1)
+                # print("Invalid input.")
+                renderer.render(log_text=["Invalid input."], player=player)
+                wait_for_user(player=player)
+            # time.sleep(1)
             
         elif choice == "3":
-            print("\n=== CASHING DRAFTS ===")
+            # print("\n=== CASHING DRAFTS ===")
+            draft_buttons = []
+            log_lines = ["=== CASHING DRAFTS ==="]
+            
             for i, r in enumerate(receipts):
                 origin = r.stats.get("origin", "Unknown")
-                print(f"{i+1}. {r.name} from {origin}")
+                # print(f"{i+1}. {r.name} from {origin}")
+                lbl = f"{r.name} ({origin})"
+                draft_buttons.append({"label": lbl, "key": str(i+1)})
+                log_lines.append(f"{i+1}. {lbl}")
+                
+            draft_buttons.append({"label": "Back", "key": "B"})
+            
+            renderer.render(
+                log_text=log_lines + ["Select draft to cash..."],
+                buttons=draft_buttons,
+                player=player
+            )
                 
             try:
-                idx = int(input("Select draft to cash (0 to cancel): ")) - 1
+                # idx = int(input("Select draft to cash (0 to cancel): ")) - 1
+                inp = renderer.get_input()
+                if inp == "B": continue
+                
+                idx = int(inp) - 1
                 if 0 <= idx < len(receipts):
                     draft = receipts[idx]
                     origin = draft.stats.get("origin")
                     
-                    print(f"Teller examines the draft for ${draft.value:.2f}...")
+                    # print(f"Teller examines the draft for ${draft.value:.2f}...")
+                    renderer.render(log_text=[f"Teller examines draft for ${draft.value:.2f}..."], player=player)
                     time.sleep(1)
                     
                     if origin == world.town_name:
@@ -2316,25 +2375,35 @@ def visit_bank(player, world):
                         skill = player.charm * 10 + player.luck_base
                         
                         if skill + random.randint(0, 50) > difficulty:
-                            print("Teller: 'Everything seems in order.'")
-                            print(f"You receive ${draft.value:.2f}.")
+                            # print("Teller: 'Everything seems in order.'")
+                            # print(f"You receive ${draft.value:.2f}.")
                             player.cash += draft.value
                             player.inventory.remove(draft)
+                            renderer.render(log_text=["Teller: 'Everything seems in order.'", f"You receive ${draft.value:.2f}."], player=player)
+                            wait_for_user(player=player)
                         else:
-                            print("Teller: 'Wait a minute... this isn't you!'")
-                            print("ALARM RAISED!")
+                            # print("Teller: 'Wait a minute... this isn't you!'")
+                            # print("ALARM RAISED!")
                             world.add_heat(30)
                             player.bounty += 20
                             player.honor -= 5
+                            
+                            renderer.render(log_text=["Teller: 'Wait... this isn't you!'", "ALARM RAISED!", "Flee? (Y/N)"], player=player)
+                            
                             # Fight or Flee?
-                            if input("Flee? (Y/N): ").upper() == "N":
+                            # if input("Flee? (Y/N): ").upper() == "N":
+                            if renderer.get_input() == "N":
                                 start_duel(player, world, NPC("Sheriff"))
                             else:
-                                print("You run out of the bank!")
+                                # print("You run out of the bank!")
+                                renderer.render(log_text=["You run out of the bank!"], player=player)
+                                time.sleep(1)
                                 return
                     else:
-                        print(f"Teller: 'This is drawn on the {origin} branch. You must go there to cash it.'")
-                        time.sleep(1.5)
+                        # print(f"Teller: 'This is drawn on the {origin} branch. You must go there to cash it.'")
+                        renderer.render(log_text=[f"Teller: 'This is drawn on {origin}.'", "You must go there to cash it."], player=player)
+                        wait_for_user(player=player)
+                        # time.sleep(1.5)
             except: pass
             
         elif choice == "B":
