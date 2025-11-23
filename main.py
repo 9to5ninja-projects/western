@@ -3,7 +3,7 @@ import time
 import random
 from game_state import PlayerState, WorldState, Item, ItemType, AVAILABLE_HORSES, AVAILABLE_WEAPONS, AVAILABLE_HATS
 from ui import render_hud, get_menu_choice, clear_screen
-from duel_engine_v2 import DuelEngineV2, Combatant, Action, ai_cheater, ai_honorable, ai_brawler
+from duel_engine_v2 import DuelEngineV2, Combatant, Action, Orientation, ai_cheater, ai_honorable, ai_brawler
 from shootout_engine import ShootoutEngine
 from characters import NPC
 
@@ -363,12 +363,19 @@ def start_brawl(player, world, npc=None):
         engine.render()
         
         # Player Action
-        print("\n[1] PUNCH   [2] BLOCK/WAIT")
+        print("\n[1] JAB (Off-hand, Fast)   [2] HOOK (Dominant, Strong)")
+        print("[3] BLOCK/WAIT")
         act = input("Action: ")
-        p1_act = Action.PUNCH if act == "1" else Action.WAIT
+        
+        if act == "1": p1_act = Action.JAB
+        elif act == "2": p1_act = Action.HOOK
+        else: p1_act = Action.WAIT
         
         # AI Action
-        p2_act = Action.PUNCH if random.random() > 0.3 else Action.WAIT
+        roll = random.random()
+        if roll < 0.4: p2_act = Action.JAB
+        elif roll < 0.7: p2_act = Action.HOOK
+        else: p2_act = Action.WAIT
         
         engine.run_turn(p1_act, p2_act)
         time.sleep(1)
@@ -459,7 +466,13 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         print("\n[1] PACE   [2] TURN   [3] DRAW   [4] SHOOT CENTER")
         print("[5] SHOOT HIGH [6] SHOOT LOW [7] RELOAD [8] DUCK")
         print("[9] SURRENDER [0] STEP IN [J] JUMP")
-        print("[D] DUCK & SHOOT [R] RISE & SHOOT")
+        
+        special = "[D] DUCK & SHOOT [R] RISE & SHOOT"
+        if p1.orientation == Orientation.FACING_OPPONENT and engine.get_distance() <= 3:
+            special += " [K] KICK SAND"
+        if engine.get_distance() <= 2:
+            special += " [P] PUNCH"
+        print(special)
         
         choice = input("Action: ").upper()
         map_act = {
@@ -467,7 +480,8 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             "4": Action.SHOOT_CENTER, "5": Action.SHOOT_HIGH,
             "6": Action.SHOOT_LOW, "7": Action.RELOAD, "8": Action.DUCK,
             "9": Action.SURRENDER, "0": Action.STEP_IN, "J": Action.JUMP,
-            "D": Action.DUCK_FIRE, "R": Action.STAND_FIRE
+            "D": Action.DUCK_FIRE, "R": Action.STAND_FIRE, "K": Action.KICK_SAND,
+            "P": Action.PUNCH
         }
         p1_act = map_act.get(choice, Action.WAIT)
         
@@ -571,15 +585,28 @@ def visit_doctor(player, world):
         print("\nTREATING INJURIES:")
         # Create a copy to iterate safely while modifying
         for inj in list(player.injuries):
-            cost = 15.00 
-            print(f"- {inj} (Cost: ${cost:.2f})")
-            if input("Treat? (Y/N): ").upper() == "Y":
-                if player.cash >= cost:
-                    player.cash -= cost
-                    player.injuries.remove(inj)
-                    print("Treated.")
-                else:
-                    print("Not enough cash.")
+            if "Broken Hand" in inj:
+                cost = 25.00
+                print(f"- {inj} (Requires Cast: ${cost:.2f}, 6-8 Weeks)")
+                if input("Cast? (Y/N): ").upper() == "Y":
+                    if player.cash >= cost:
+                        player.cash -= cost
+                        duration = random.randint(6, 8)
+                        player.healing_injuries[inj] = duration
+                        player.injuries.remove(inj)
+                        print("Hand casted. It will heal in time.")
+                    else:
+                        print("Not enough cash.")
+            else:
+                cost = 15.00 
+                print(f"- {inj} (Cost: ${cost:.2f})")
+                if input("Treat? (Y/N): ").upper() == "Y":
+                    if player.cash >= cost:
+                        player.cash -= cost
+                        player.injuries.remove(inj)
+                        print("Treated.")
+                    else:
+                        print("Not enough cash.")
                     
     input("Press Enter...")
 
@@ -600,6 +627,16 @@ def sleep(player, world):
         print("You slept in the dirt. It was rough.")
         player.hp = min(player.max_hp, player.hp + 5) # Less healing
         
+    # Healing Injuries
+    if player.healing_injuries:
+        for inj in list(player.healing_injuries.keys()):
+            player.healing_injuries[inj] -= 1
+            if player.healing_injuries[inj] <= 0:
+                del player.healing_injuries[inj]
+                print(f"Your {inj} has fully healed!")
+            else:
+                print(f"{inj} is healing... ({player.healing_injuries[inj]} weeks left)")
+
     input("Press Enter...")
 
 def visit_stables(player, world):

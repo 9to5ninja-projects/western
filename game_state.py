@@ -52,7 +52,9 @@ INJURY_EFFECTS = {
     "Broken Leg": {"acc": 0, "spd": -15, "desc": "Can't move fast."},
     "Concussion": {"acc": -10, "spd": -10, "desc": "Head is spinning."},
     "Eye Injury": {"acc": -20, "spd": 0, "desc": "Depth perception gone."},
-    "Cracked Ribs": {"acc": 0, "spd": -5, "desc": "Breathing hurts."}
+    "Cracked Ribs": {"acc": 0, "spd": -5, "desc": "Breathing hurts."},
+    "Broken Hand (R)": {"acc": -20, "spd": 0, "desc": "Right hand useless."},
+    "Broken Hand (L)": {"acc": -20, "spd": 0, "desc": "Left hand useless."}
 }
 
 class PlayerState:
@@ -96,6 +98,12 @@ class PlayerState:
         self.gang = [] # List of NPC objects
         self.is_gang_leader = False
         self.camp_established = False
+        
+        # Handedness
+        self.dominant_hand = "right" # "right" or "left"
+        
+        # Healing
+        self.healing_injuries = {} # {injury_name: weeks_remaining}
 
     @property
     def max_hp(self):

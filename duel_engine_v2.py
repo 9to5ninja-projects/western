@@ -38,8 +38,11 @@ class Action(Enum):
     DUCK_FIRE = "duck_fire" # Duck and Shoot (Penalty)
     STAND_FIRE = "stand_fire" # Stand and Shoot (Penalty)
     JUMP = "jump"           # Instant evasion
+    KICK_SAND = "kick_sand" # Dirty move (Blind)
     TAKE_COVER = "take_cover"
     PUNCH = "punch"
+    JAB = "jab"             # Off-hand punch (Accurate, Low Dmg)
+    HOOK = "hook"           # Dominant punch (High Dmg, Low Acc)
     SURRENDER = "surrender"
     WAIT = "wait"
 
@@ -97,8 +100,12 @@ class Combatant:
         self.behind_cover = False
         
         self.blinded = 0 # 0, 1, 2 eyes lost
+        self.temp_blind_turns = 0 # Sand in eyes
         self.injuries = []
         self.dominant_hand = BodyPart.ARM_R
+        if player_state and hasattr(player_state, 'dominant_hand'):
+             self.dominant_hand = BodyPart.ARM_R if player_state.dominant_hand == "right" else BodyPart.ARM_L
+        
         self.is_surrendering = False 
 
     def sync_state(self):
@@ -114,6 +121,16 @@ class Combatant:
                 if inj not in self.player_state.injuries:
                     self.player_state.injuries.append(inj)
 
+        # Apply persistent injuries to body parts (Start broken if injured)
+        if self.player_state:
+            all_injuries = self.player_state.injuries + list(self.player_state.healing_injuries.keys())
+            for inj in all_injuries:
+                if "Broken Hand (R)" in inj: self.body_parts[BodyPart.ARM_R] = 0
+                if "Broken Hand (L)" in inj: self.body_parts[BodyPart.ARM_L] = 0
+                if "Broken Arm" in inj: 
+                    # Generic broken arm affects both? Or random? Let's assume dominant for now or ignore
+                    pass 
+
     def get_distance_from_center(self):
         return abs(self.position)
 
@@ -128,6 +145,8 @@ class Combatant:
         status += f"\n  Stance: {'DUCKING' if self.is_ducking else 'STANDING'}"
         if self.blinded > 0:
             status += f"\n  BLINDED ({self.blinded} eyes lost)"
+        if self.temp_blind_turns > 0:
+            status += f"\n  BLINDED BY SAND ({self.temp_blind_turns} turns)"
         if not self.conscious:
             status += f"\n  STATUS: UNCONSCIOUS"
         return status
@@ -175,7 +194,11 @@ class DuelEngineV2:
             hit_chance -= 20
             
         # Blindness Penalty
-        hit_chance -= (shooter.blinded * 25)
+        if shooter.temp_blind_turns > 0:
+            hit_chance = 0
+            msg_prefix += "(Blind Fire) "
+        else:
+            hit_chance -= (shooter.blinded * 25)
         
         # Target Stance
         # "if your are prone or crouched your accuraccy increases but your evasion decreases."
@@ -274,26 +297,65 @@ class DuelEngineV2:
                     
         return hit_part, damage_blood, msg
 
-    def resolve_punch(self, attacker, defender):
-        if attacker.weapon_state != WeaponState.HOLSTERED:
-            return "Cannot punch with weapon in hand!"
+    def resolve_punch(self, attacker, defender, punch_type=Action.PUNCH):
+        # Determine Hand Used
+        hand_used = attacker.dominant_hand
+        off_hand = BodyPart.ARM_L if attacker.dominant_hand == BodyPart.ARM_R else BodyPart.ARM_R
         
+        if punch_type == Action.JAB:
+            hand_used = off_hand
+        elif punch_type == Action.HOOK:
+            hand_used = attacker.dominant_hand
+        else:
+            # Auto-select for generic PUNCH (Duels)
+            # If weapon drawn, MUST use off-hand
+            if attacker.weapon_state == WeaponState.DRAWN:
+                hand_used = off_hand
+            else:
+                # Prefer dominant if free
+                hand_used = attacker.dominant_hand
+
+        # Check if Hand is Free/Usable
+        if attacker.weapon_state == WeaponState.DRAWN and hand_used == attacker.dominant_hand:
+             return "Cannot punch with gun hand!"
+             
+        if attacker.body_parts[hand_used] <= 0:
+            return f"Cannot punch with broken {hand_used.value}!"
+
         dist = self.get_distance()
         if dist > 2:
             return "Too far to punch!"
             
+        # Stats based on Punch Type
+        acc_mod = 0
+        dmg_mod = 0
+        
+        if punch_type == Action.JAB:
+            acc_mod = 15 # Accurate
+            dmg_mod = -3 # Weak
+        elif punch_type == Action.HOOK:
+            acc_mod = -10 # Wild
+            dmg_mod = 5 # Strong
+            
         # Hit chance modified by Atk vs Def
-        hit_chance = 60 + (attacker.luck - 50)/2 + (attacker.brawl_atk - defender.brawl_def)
+        hit_chance = 60 + (attacker.luck - 50)/2 + (attacker.brawl_atk - defender.brawl_def) + acc_mod
         
         if random.randint(0, 100) < hit_chance:
             # Damage Calculation
             base_dmg = random.randint(8, 15)
             dmg_bonus = max(0, attacker.brawl_atk - defender.brawl_def)
-            total_dmg = base_dmg + dmg_bonus
+            total_dmg = base_dmg + dmg_bonus + dmg_mod
             
             defender.hp -= total_dmg
-            msg = f"{attacker.name} punches {defender.name} for {total_dmg} HP damage!"
+            msg = f"{attacker.name} {punch_type.value}s {defender.name} for {total_dmg} HP!"
             
+            # Self-Injury (Broken Hand)
+            if random.random() < 0.02: # 2% chance
+                attacker.body_parts[hand_used] = 0
+                hand_str = "R" if hand_used == BodyPart.ARM_R else "L"
+                attacker.injuries.append(f"Broken Hand ({hand_str})")
+                msg += f" {attacker.name} broke their hand on impact!"
+
             # Critical Effects (Blind/Bleed)
             if random.random() < 0.05: # 5% chance
                 effect_roll = random.random()
@@ -310,11 +372,15 @@ class DuelEngineV2:
                  msg += " DISARMED!"
 
             # Death/KO Check
-            # Death: Dmg > 20% MaxHP AND HP <= 0
-            if total_dmg > (defender.max_hp * 0.20) and defender.hp <= 0:
+            # Instant Death: > 30% MaxHP
+            if total_dmg > (defender.max_hp * 0.30):
                 defender.alive = False
-                msg += " A FATAL BLOW! Neck snaps!"
-            # KO: HP < 20% MaxHP
+                msg += " INSTANT DEATH! Skull fractured!"
+            # Instant KO: > 20% MaxHP
+            elif total_dmg > (defender.max_hp * 0.20):
+                defender.conscious = False
+                msg += " KNOCKED OUT COLD!"
+            # Regular KO: HP < 20% MaxHP
             elif defender.hp < (defender.max_hp * 0.20):
                 defender.conscious = False
                 msg += " KNOCKED OUT!"
@@ -429,6 +495,24 @@ class DuelEngineV2:
             actor.is_jumping = True
             msgs.append(f"{actor.name} jumps!")
 
+        elif action == Action.KICK_SAND:
+            dist = self.get_distance()
+            if actor.orientation != Orientation.FACING_OPPONENT:
+                msgs.append(f"{actor.name} tries to kick sand but isn't facing their target!")
+            elif dist > 3:
+                msgs.append(f"{actor.name} kicks dust at nothing. Too far away!")
+            elif target.orientation != Orientation.FACING_OPPONENT:
+                msgs.append(f"{actor.name} kicks sand at {target.name}'s back. It is ineffective.")
+            else:
+                # Success chance (Base 35% + Luck mod)
+                chance = 35 + (actor.luck - 50) / 2
+                if random.randint(0, 100) < chance:
+                    turns = random.randint(1, 3)
+                    target.temp_blind_turns += turns
+                    msgs.append(f"{actor.name} kicks sand into {target.name}'s eyes! Blinded for {turns} turns!")
+                else:
+                    msgs.append(f"{actor.name} kicks sand but {target.name} looks away in time!")
+
         elif action == Action.TAKE_COVER:
             if actor.has_horse and abs(actor.position) >= 13:
                 actor.behind_cover = True
@@ -437,7 +521,15 @@ class DuelEngineV2:
                 msgs.append(f"{actor.name} has no cover here.")
 
         elif action == Action.PUNCH:
-            res = self.resolve_punch(actor, target)
+            res = self.resolve_punch(actor, target, Action.PUNCH)
+            msgs.append(res)
+
+        elif action == Action.JAB:
+            res = self.resolve_punch(actor, target, Action.JAB)
+            msgs.append(res)
+
+        elif action == Action.HOOK:
+            res = self.resolve_punch(actor, target, Action.HOOK)
             msgs.append(res)
 
         elif action == Action.SURRENDER:
@@ -474,6 +566,12 @@ class DuelEngineV2:
         # End of Turn Effects
         for p in [self.p1, self.p2]:
             if p.alive:
+                # Temporary Blindness Recovery
+                if p.temp_blind_turns > 0:
+                    p.temp_blind_turns -= 1
+                    if p.temp_blind_turns == 0:
+                        self.log.append(f"{p.name} blinks the sand out of their eyes.")
+
                 # Bleeding
                 if p.bleeding_rate > 0:
                     p.blood -= p.bleeding_rate

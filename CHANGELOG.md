@@ -109,3 +109,22 @@ All notable changes to this project will be documented in this file.
 - **Global Systems**:
   - **Cross-Town Bounties**: Sheriff's office now displays bounties for NPCs in other towns.
   - **Bank Fraud**: Looted Bank Drafts must be cashed at their specific town of origin (or forged with a Charm check).
+
+## [0.6.0] - 2025-11-23
+
+### Added
+- **Advanced Melee Combat**:
+  - **Handedness**: Players now have a dominant hand (Right by default).
+  - **Punch Types**:
+    - **Jab**: Uses off-hand. Fast (+15% Acc) but weak (-3 Dmg).
+    - **Hook**: Uses dominant hand. Strong (+5 Dmg) but wild (-10% Acc).
+  - **Broken Hand Mechanic**:
+    - **Self-Injury**: 2% chance to break your hand when punching.
+    - **Consequences**: A broken hand cannot be used for weapons or punching.
+    - **Medical Treatment**: Doctors can "Cast" a broken hand ($25.00).
+    - **Healing Time**: Casted hands take 6-8 weeks to heal, during which they remain unusable.
+  - **Critical Hits**:
+    - **Instant KO**: Dealing >20% of opponent's Max HP in one hit.
+    - **Instant Death**: Dealing >30% of opponent's Max HP in one hit.
+- **Dirty Moves Refinement**:
+  - **Kick Sand**: Now requires facing the opponent and being within 3 spaces. Success chance reduced to 35%.
