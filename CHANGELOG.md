@@ -204,4 +204,20 @@ All notable changes to this project will be documented in this file.
 - **New Item Types**:
   - Added `TROPHY` item type for badges and unique collectibles.
 
+## [0.12.0] - 2025-11-23
+
+### Added
+- **Rival Gangs System**:
+  - **Procedural Generation**: Rival gangs are now generated at the start of a new game.
+    - **Attributes**: Name (e.g., "The Red Skulls"), Leader (High Bounty NPC), Hideout (Random Town), Members.
+  - **Background Simulation**:
+    - **Movement**: Gangs move between towns and hideouts.
+    - **Activities**: Gangs perform robberies (increasing town heat), fight lawmen, and recruit new members.
+    - **Rumors**: Gang actions generate rumors (e.g., "The Red Skulls robbed a store in Shinbone").
+  - **Interactions**:
+    - **Bounties**: Gang leaders and members appear on the Sheriff's Wanted List.
+    - **Ambushes**: Traveling near a gang's hideout risks a road ambush.
+    - **Cantina**: Gang members can be found mingling in local cantinas if their gang is in town.
+
+
 

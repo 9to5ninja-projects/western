@@ -183,6 +183,16 @@ class Town:
             val = int(val * 0.5) # Chaos reduces lawfulness
         return val
 
+class Gang:
+    def __init__(self, name, leader, hideout="Wilderness"):
+        self.name = name
+        self.leader = leader
+        self.members = [] # List of NPC objects (excluding leader)
+        self.hideout = hideout
+        self.reputation = 0
+        self.cash = 100.0
+        self.active = True
+
 class WorldState:
     def __init__(self):
         self.week = 1
@@ -211,6 +221,7 @@ class WorldState:
         # Dynamic World
         self.active_npcs = [] # List of persistent NPC objects roaming the world
         self.rumors = [] # List of strings
+        self.rival_gangs = [] # List of Gang objects
 
     def get_town(self):
         return self.towns.get(self.town_name)

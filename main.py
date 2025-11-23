@@ -1,7 +1,7 @@
 import sys
 import time
 import random
-from game_state import PlayerState, WorldState, Item, ItemType, AVAILABLE_HORSES, AVAILABLE_WEAPONS, AVAILABLE_HATS
+from game_state import PlayerState, WorldState, Item, ItemType, AVAILABLE_HORSES, AVAILABLE_WEAPONS, AVAILABLE_HATS, Gang
 from ui import render_hud, get_menu_choice, clear_screen
 from duel_engine_v2 import DuelEngineV2, Combatant, Action, Orientation, ai_cheater, ai_honorable, ai_brawler
 from shootout_engine import ShootoutEngine
@@ -72,6 +72,9 @@ def new_game(existing_world=None):
         world.rumors.append(f"The legend of the previous drifter ended in {world.town_name}.")
     else:
         world = WorldState()
+        # Generate Rival Gangs
+        for _ in range(random.randint(1, 2)):
+            generate_rival_gang(world)
         
     world.town_name = start_town
     
@@ -187,12 +190,49 @@ def travel_menu(player, world):
                     update_world_simulation(world)
                     # Random Event Chance
                     if random.random() < 0.2:
-                        print("You encounter a stranger on the road.")
-                        npc = NPC("Outlaw" if random.random() < 0.3 else "Cowboy")
-                        print(f"{npc.name} ({npc.archetype}): '{npc.get_line()}'")
-                        if npc.archetype == "Outlaw":
-                            if input("Fight? (Y/N): ").upper() == "Y":
-                                start_duel(player, world, npc)
+                        # Check for Rival Gang Ambush
+                        ambush = False
+                        for g in world.rival_gangs:
+                            if g.active and g.hideout in [world.town_name, dest] and random.random() < 0.3:
+                                print(f"\nAMBUSH! {g.name} blocks the road!")
+                                print(f"Leader: {g.leader.name} - 'This is our territory.'")
+                                
+                                enemies = [g.leader] + g.members[:random.randint(2, 4)]
+                                player_team = [player] + player.gang
+                                
+                                if input("Fight? (Y/N): ").upper() == "Y":
+                                    engine = ShootoutEngine(player_team, enemies)
+                                    while True:
+                                        engine.render()
+                                        if not engine.run_turn(): break
+                                        time.sleep(1)
+                                    
+                                    process_gang_casualties(player, world)
+                                    
+                                    # Check Gang Status
+                                    if not g.leader.alive:
+                                        print(f"You killed {g.leader.name}!")
+                                        g.active = False
+                                        world.rumors.append(f"{player.name} destroyed {g.name}!")
+                                        player.reputation += 20
+                                    
+                                    # Remove dead members
+                                    g.members = [m for m in g.members if m.alive]
+                                    
+                                else:
+                                    print("You pay a toll and flee.")
+                                    player.cash = max(0, player.cash - 20)
+                                
+                                ambush = True
+                                break
+                        
+                        if not ambush:
+                            print("You encounter a stranger on the road.")
+                            npc = NPC("Outlaw" if random.random() < 0.3 else "Cowboy")
+                            print(f"{npc.name} ({npc.archetype}): '{npc.get_line()}'")
+                            if npc.archetype == "Outlaw":
+                                if input("Fight? (Y/N): ").upper() == "Y":
+                                    start_duel(player, world, npc)
                 
                 world.town_name = dest
                 print(f"\nArrived in {dest}.")
@@ -264,10 +304,23 @@ def visit_cantina(player, world):
             
             # Mingle with Locals
             locals_here = [n for n in world.active_npcs if n.location == world.town_name]
+            
+            # Add Gang Members
+            for g in world.rival_gangs:
+                if g.active and g.hideout == world.town_name:
+                    locals_here.append(g.leader)
+                    locals_here.extend(g.members)
+            
             if locals_here:
                 print("\n=== NOTABLE PEOPLE ===")
                 for i, n in enumerate(locals_here):
-                    print(f"{i+1}. Talk to {n.name} ({n.archetype})")
+                    # Tag gang members
+                    tag = ""
+                    for g in world.rival_gangs:
+                        if g.active and (n == g.leader or n in g.members):
+                            tag = f" [{g.name}]"
+                            break
+                    print(f"{i+1}. Talk to {n.name} ({n.archetype}){tag}")
                 
                 print("M. Mingle")
                 sub = input("Choice: ").upper()
@@ -970,13 +1023,31 @@ def visit_sheriff(player, world):
             # Check Bounties
             print("\n=== WANTED POSTERS ===")
             wanted = [n for n in world.active_npcs if n.bounty > 0]
+            
+            # Add Gang Leaders/Members
+            for g in world.rival_gangs:
+                if not g.active: continue
+                if g.leader.bounty > 0:
+                    wanted.append(g.leader)
+                for m in g.members:
+                    if m.bounty > 0:
+                        wanted.append(m)
+            
             if not wanted:
                 print("No active bounties.")
             else:
                 for n in wanted:
                     loc = n.location if n.location else "Unknown"
-                    print(f"- {n.name} (${n.bounty:.2f}) - Last seen: {loc}")
-                    print(f"  '{n.rumor}'")
+                    # Check if it's a gang leader
+                    gang_tag = ""
+                    for g in world.rival_gangs:
+                        if g.active and (n == g.leader or n in g.members):
+                            gang_tag = f" ({g.name})"
+                            break
+                            
+                    print(f"- {n.name}{gang_tag} (${n.bounty:.2f}) - Last seen: {loc}")
+                    if n.rumor:
+                        print(f"  '{n.rumor}'")
             input("Press Enter...")
 
         elif choice == "2":
@@ -1411,6 +1482,9 @@ def update_world_simulation(world):
         "A storm is brewing in the north."
     ]
     world.rumors.append(random.choice(generic_rumors))
+    
+    # 4. Rival Gangs
+    process_rival_gangs(world)
 
 def visit_mayor(player, world):
     town = world.get_town()
@@ -1775,5 +1849,88 @@ def process_gang_casualties(player, world):
                 print(f"{member.name} died in the shootout.")
                 player.gang.remove(member)
 
-if __name__ == '__main__':
-    main_menu()
+def generate_rival_gang(world):
+    # Gang Name Generator
+    adjectives = ["Red", "Black", "Dead", "Wild", "Bloody", "Iron", "Night", "Dusty"]
+    nouns = ["Sash", "Hand", "Riders", "Skulls", "Coyotes", "Vipers", "Ghosts", "Dogs"]
+    
+    leader = NPC("Outlaw")
+    leader.traits.append("Leader") # Flavor trait
+    leader.bounty = random.randint(100, 500)
+    
+    # Name format: "The [Adj] [Noun]" or "[Leader]'s Gang"
+    if random.random() < 0.5:
+        name = f"The {random.choice(adjectives)} {random.choice(nouns)}"
+    else:
+        name = f"{leader.name.split()[-1]}'s Gang"
+        
+    # Hideout
+    towns = list(world.towns.keys())
+    hideout = random.choice(towns)
+    
+    gang = Gang(name, leader, hideout)
+    
+    # Members
+    for _ in range(random.randint(2, 5)):
+        member = NPC("Outlaw")
+        member.location = hideout
+        gang.members.append(member)
+        
+    world.rival_gangs.append(gang)
+    world.rumors.append(f"Rumor has it {name} has set up near {hideout}.")
+
+def process_rival_gangs(world):
+    for gang in world.rival_gangs:
+        if not gang.active: continue
+        
+        # 1. Move?
+        if random.random() < 0.3:
+            neighbors = list(world.map.get(gang.hideout, {}).keys())
+            if neighbors:
+                gang.hideout = random.choice(neighbors)
+                # Move members
+                gang.leader.location = gang.hideout
+                for m in gang.members:
+                    m.location = gang.hideout
+                    
+        # 2. Action?
+        if random.random() < 0.4:
+            action_roll = random.random()
+            town = world.towns.get(gang.hideout)
+            
+            if action_roll < 0.5:
+                # Robbery
+                loot = random.randint(50, 200)
+                gang.cash += loot
+                gang.reputation += 5
+                gang.leader.bounty += 20
+                if town:
+                    town.heat = min(100, town.heat + 10)
+                world.rumors.append(f"{gang.name} robbed a store in {gang.hideout}.")
+                
+            elif action_roll < 0.8:
+                # Shootout with Law
+                if town and town.lawfulness > 20:
+                    # Abstract result
+                    if random.random() < 0.5:
+                        # Gang wins
+                        town.heat += 20
+                        world.rumors.append(f"{gang.name} drove off the law in {gang.hideout}!");
+                    else:
+                        # Gang loses member
+                        if gang.members:
+                            dead = gang.members.pop()
+                            world.rumors.append(f"A member of {gang.name} was killed in {gang.hideout}.")
+                        else:
+                            # Leader killed?
+                            if random.random() < 0.3:
+                                gang.active = False
+                                world.rumors.append(f"{gang.leader.name} of {gang.name} was killed! The gang has disbanded.")
+            
+            else:
+                # Recruitment
+                if len(gang.members) < 8:
+                    new_member = NPC("Outlaw")
+                    new_member.location = gang.hideout
+                    gang.members.append(new_member)
+                    world.rumors.append(f"{gang.name} is recruiting in {gang.hideout}.")

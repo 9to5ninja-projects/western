@@ -74,4 +74,9 @@
 - [x] **Trophy System**:
     - Collect Sheriff/Deputy badges from kills.
     - Infamy score based on trophies.
+- [x] **Rival Gangs**:
+    - Procedurally generated gangs (Name, Leader, Hideout).
+    - Background simulation (Robberies, Shootouts, Recruitment).
+    - Interactions (Ambushes, Bounties, Cantina).
+
 
