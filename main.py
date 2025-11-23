@@ -309,7 +309,14 @@ def travel_menu(player, world):
         opts["B"] = "Back"
         
         # Render Travel Menu
-        travel_buttons = [{"label": f"{dest[:6]}..", "key": str(i+1)} for i, dest in enumerate(destinations)]
+        travel_buttons = []
+        for i, dest in enumerate(destinations):
+            dist = neighbors[dest]
+            speed = player.horse.stats.get("spd", 5) if player.horse else 2
+            weeks = max(1, round(dist / (speed * 5)))
+            label = f"{dest} ({weeks}w)"
+            travel_buttons.append({"label": label, "key": str(i+1)})
+            
         travel_buttons.append({"label": "Back", "key": "B"})
         
         renderer.render(
@@ -331,10 +338,12 @@ def travel_menu(player, world):
                 speed = player.horse.stats.get("spd", 5) if player.horse else 2
                 weeks = max(1, round(dist / (speed * 5)))
                 
-                print(f"\nDeparting for {dest}...")
+                renderer.render(log_text=[f"Departing for {dest}...", f"Estimated time: {weeks} weeks."], player=player)
+                time.sleep(1)
+                
                 # Travel Event Loop?
                 for w in range(weeks):
-                    print(f"Week {w+1} on the trail...")
+                    renderer.render(log_text=[f"Week {w+1} on the trail..."], player=player)
                     time.sleep(0.5)
                     world.week += 1
                     update_world_simulation(world)
@@ -344,13 +353,19 @@ def travel_menu(player, world):
                         ambush = False
                         for g in world.rival_gangs:
                             if g.active and g.hideout in [world.town_name, dest] and random.random() < 0.3:
-                                print(f"\nAMBUSH! {g.name} blocks the road!")
-                                print(f"Leader: {g.leader.name} - 'This is our territory.'")
                                 
                                 enemies = [g.leader] + g.members[:random.randint(2, 4)]
                                 player_team = [player] + player.gang
                                 
-                                if get_player_input("Fight? (Y/N): ").upper() == "Y":
+                                renderer.render(
+                                    log_text=[f"AMBUSH! {g.name} blocks the road!", f"Leader: {g.leader.name}", "'This is our territory.'", "Fight? (Y/N)"],
+                                    player=player,
+                                    buttons=[{"label": "Fight", "key": "Y"}, {"label": "Pay Toll", "key": "N"}]
+                                )
+                                
+                                fight_choice = renderer.get_input()
+                                
+                                if fight_choice == "Y":
                                     engine = ShootoutEngine(player_team, enemies)
                                     while True:
                                         engine.render()
@@ -361,32 +376,41 @@ def travel_menu(player, world):
                                     
                                     # Check Gang Status
                                     if not g.leader.alive:
-                                        print(f"You killed {g.leader.name}!")
                                         g.active = False
                                         world.rumors.append(f"{player.name} destroyed {g.name}!")
                                         player.reputation += 20
+                                        wait_for_user([f"You killed {g.leader.name}!", "Gang destroyed."], player=player)
                                     
                                     # Remove dead members
                                     g.members = [m for m in g.members if m.alive]
                                     
                                 else:
-                                    print("You pay a toll and flee.")
                                     player.cash = max(0, player.cash - 20)
+                                    wait_for_user(["You pay a toll ($20) and flee."], player=player)
                                 
                                 ambush = True
                                 break
                         
                         if not ambush:
-                            print("You encounter a stranger on the road.")
                             npc = NPC("Outlaw" if random.random() < 0.3 else "Cowboy")
-                            print(f"{npc.name} ({npc.archetype}): '{npc.get_line()}'")
+                            
+                            log_lines = ["You encounter a stranger.", f"{npc.name} ({npc.archetype})", f"'{npc.get_line()}'"]
+                            
                             if npc.archetype == "Outlaw":
-                                if input("Fight? (Y/N): ").upper() == "Y":
+                                log_lines.append("Fight? (Y/N)")
+                                renderer.render(
+                                    log_text=log_lines, 
+                                    player=player,
+                                    buttons=[{"label": "Fight", "key": "Y"}, {"label": "Ignore", "key": "N"}]
+                                )
+                                
+                                if renderer.get_input() == "Y":
                                     start_duel(player, world, npc)
+                            else:
+                                wait_for_user(log_lines, player=player)
                 
                 world.town_name = dest
-                print(f"\nArrived in {dest}.")
-                time.sleep(1)
+                wait_for_user([f"Arrived in {dest}."], player=player)
                 break
         except ValueError:
             pass
@@ -733,28 +757,40 @@ def start_brawl(player, world, npc=None):
     
     if p1.conscious:
         print("\nYOU WON THE BRAWL!")
-        renderer.render(log_text=["YOU WON THE BRAWL!"])
-        time.sleep(2)
         
+        log_lines = ["YOU WON THE BRAWL!"]
         if not p2.alive and npc:
             npc.alive = False
             print("You beat them to death!")
+            log_lines.append("You beat them to death!")
             player.honor -= 20
             world.add_heat(20)
 
         player.reputation += 1
+        wait_for_user(log_lines, player=player)
         
         # Loot Chance
-        renderer.render(log_text=["Loot them? (Y/N)"])
-        # if input("Loot them? (Y/N): ").upper() == "Y":
+        renderer.render(
+            log_text=["Loot them? (Y/N)"],
+            buttons=[{"label": "Loot", "key": "Y"}, {"label": "Leave", "key": "N"}]
+        )
+        
         if renderer.get_input() == "Y":
             loot_screen(player, world, npc)
         
-        # Crime Consequence (Heat based)
-        heat = world.get_local_heat()
-        if random.randint(0, 100) < heat:
-            wait_for_user("The Sheriff is approaching...")
-            handle_crime(player, world, "disturbing the peace")
+        # Crime Consequence
+        town = world.get_town()
+        sheriff_active = town and town.sheriff and town.sheriff.alive
+        
+        if not p2.alive and sheriff_active:
+             wait_for_user(["The Sheriff steps in!", "He saw the whole thing."], player=player)
+             handle_crime(player, world, "manslaughter")
+        else:
+            # Normal Disturbing Peace Check
+            heat = world.get_local_heat()
+            if random.randint(0, 100) < heat:
+                wait_for_user("The Sheriff is approaching...", player=player)
+                handle_crime(player, world, "disturbing the peace")
             
     else:
         print("\nYou were knocked out...")
@@ -783,8 +819,7 @@ def start_duel(player, world, npc=None, is_sheriff=False):
     if not npc: 
         npc = NPC("Sheriff" if is_sheriff else "Outlaw")
         
-    print(f"\nYou challenge {npc.name} ({npc.archetype}) to a duel!")
-    wait_for_user("WALK OUT")
+    wait_for_user([f"You challenge {npc.name} ({npc.archetype}) to a duel!", "WALK OUT"], player=player)
     
     p1 = Combatant(player.name, -1, player)
     p2 = Combatant(npc.name, 1)
@@ -805,7 +840,6 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         
         # Check if opponent surrendered in PREVIOUS turn
         if p2.is_surrendering:
-            print(f"\n{p2.name} is asking for mercy!")
             
             surrender_buttons = [
                 {"label": "Accept Surrender", "key": "1"},
@@ -819,22 +853,21 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             
             sub = renderer.get_input()
             if sub == "1":
-                print("You lower your weapon.")
+                wait_for_user(["You lower your weapon."], player=player)
                 p2.conscious = False # End loop gracefully
                 break
             elif sub == "2":
-                print("You demand their valuables.")
                 # Check if they agree?
                 if random.random() < 0.8:
-                    print(f"{p2.name}: 'Fine! Take it!'")
+                    wait_for_user([f"You demand their valuables.", f"{p2.name}: 'Fine! Take it!'"], player=player)
                     loot_screen(player, world, npc)
                     p2.conscious = False
                     break
                 else:
-                    print(f"{p2.name}: 'Never!'")
+                    wait_for_user([f"You demand their valuables.", f"{p2.name}: 'Never!'"], player=player)
                     p2.is_surrendering = False # They fight on!
             elif sub == "3":
-                print("You ignore their plea.")
+                wait_for_user(["You ignore their plea."], player=player)
                 player.honor -= 5
                 # Continue to action selection
         
@@ -948,13 +981,14 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             
     elif p1.alive and not p2.alive:
         print("\nVICTORY!")
-        renderer.render(log_text=["VICTORY!"])
-        time.sleep(2)
         
+        log_lines = ["VICTORY!"]
         if npc: npc.alive = False # Mark NPC as dead
         
         if is_sheriff or npc.archetype == "Sheriff":
             print("YOU KILLED THE SHERIFF! You are now a WANTED MAN.")
+            log_lines.append("YOU KILLED THE SHERIFF!")
+            log_lines.append("You are now a WANTED MAN.")
             player.bounty += 100.00
             player.honor -= 50
             world.add_heat(100)
@@ -962,7 +996,13 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             player.honor -= 5 
             player.reputation += 10
             
-            renderer.render(log_text=["Loot them? (Y/N)"])
+        wait_for_user(log_lines, player=player)
+            
+        if not (is_sheriff or npc.archetype == "Sheriff"):
+            renderer.render(
+                log_text=["Loot them? (Y/N)"],
+                buttons=[{"label": "Loot", "key": "Y"}, {"label": "Leave", "key": "N"}]
+            )
             if renderer.get_input() == "Y":
                 loot_screen(player, world, npc)
 
@@ -1703,19 +1743,58 @@ def handle_crime(player, world, crime_name):
     print(f"\nYOU ARE CAUGHT {crime_name.upper()}!")
     print("The Sheriff draws his gun.")
     
-    renderer.render(log_text=[f"CAUGHT {crime_name.upper()}!", "Sheriff draws his gun.", "Surrender? (Y/N)"], player=player)
+    renderer.render(
+        log_text=[f"CAUGHT {crime_name.upper()}!", "Sheriff draws his gun.", "Surrender? (Y/N)"], 
+        player=player,
+        buttons=[{"label": "Surrender", "key": "Y"}, {"label": "Resist", "key": "N"}]
+    )
     
     # if input("Surrender? (Y/N): ").upper() == "Y":
     if renderer.get_input() == "Y":
-        fine = world.get_local_heat() * 1.5
-        print(f"You are thrown in jail for a week and fined ${fine:.2f}.")
-        player.cash = max(0, player.cash - fine)
-        world.week += 1
+        if crime_name == "manslaughter":
+            fine = 250.0
+            jail_time = 52
+            log_msg = ["Convicted of Manslaughter.", f"Jailed for {jail_time} weeks.", f"Fined ${fine:.2f}."]
+        else:
+            fine = world.get_local_heat() * 1.5
+            jail_time = 1
+            log_msg = ["Jailed for a week.", f"Fined ${fine:.2f}."]
+
+        print(f"You are thrown in jail for {jail_time} week(s) and fined ${fine:.2f}.")
+        
+        # Payment Logic
+        paid_in_full = False
+        
+        # 1. Pay from Cash
+        if player.cash >= fine:
+            player.cash -= fine
+            paid_in_full = True
+        else:
+            fine -= player.cash
+            player.cash = 0.0
+            
+            # 2. Pay from Bank
+            if player.bank_balance >= fine:
+                player.bank_balance -= fine
+                paid_in_full = True
+                log_msg.append("Bank account garnished.")
+            else:
+                fine -= player.bank_balance
+                player.bank_balance = 0.0
+                
+                # 3. Work it off at Stables
+                # Rate: $10/week
+                labor_weeks = max(1, int(fine / 10))
+                jail_time += labor_weeks
+                log_msg.append("Unable to pay fine.")
+                log_msg.append(f"Sentenced to {labor_weeks} weeks labor at Stables.")
+        
+        world.week += jail_time
         if player.weeks_rent_paid > 0:
-            player.weeks_rent_paid -= 1
+            player.weeks_rent_paid = max(0, player.weeks_rent_paid - jail_time)
             
         world.reduce_heat(20)
-        wait_for_user([f"Jailed for a week. Fined ${fine:.2f}."], player=player)
+        wait_for_user(log_msg, player=player)
     else:
         start_duel(player, world, is_sheriff=True)
 

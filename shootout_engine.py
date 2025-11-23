@@ -1,6 +1,7 @@
 import random
 import time
 import os
+from visualizer import renderer
 
 class ShootoutCombatant:
     def __init__(self, source_obj, team_id, is_player=False):
@@ -53,17 +54,13 @@ class ShootoutEngine:
         return [t for t in targets if t.alive]
 
     def render(self):
-        os.system('cls' if os.name == 'nt' else 'clear')
-        print(f"\n=== SHOOTOUT TURN {self.turn} [{self.mode.upper()}] ===")
+        # Build Log Text for GUI
+        log_lines = [f"=== SHOOTOUT TURN {self.turn} [{self.mode.upper()}] ==="]
         
-        # Visualizer
-        # Left Side (Team 0)       Right Side (Team 1)
-        # [P] Player (HP)          [E] Outlaw (HP)
+        # Visualizer Text Construction
+        log_lines.append(f"{'YOUR GANG':<20} | {'ENEMIES':<20}")
         
         max_rows = max(len(self.team_0), len(self.team_1))
-        
-        print(f"{'YOUR GANG':<35} | {'ENEMIES':<35}")
-        print("-" * 75)
         
         for i in range(max_rows):
             # Left
@@ -73,7 +70,7 @@ class ShootoutEngine:
                 status = "DEAD" if not u.alive else f"{u.hp}/{u.max_hp}"
                 cover = f"[{'='*u.cover_level}]" if u.alive else ""
                 pos_str = f"@{u.position}" if self.mode == "takeover" and u.alive else ""
-                l_str = f"{u.name[:15]:<15} {status:<8} {cover} {pos_str}"
+                l_str = f"{u.name[:10]:<10} {status:<6} {cover} {pos_str}"
             
             # Right
             r_str = ""
@@ -82,24 +79,24 @@ class ShootoutEngine:
                 status = "DEAD" if not u.alive else f"{u.hp}/{u.max_hp}"
                 cover = f"[{'='*u.cover_level}]" if u.alive else ""
                 pos_str = f"@{u.position}" if self.mode == "takeover" and u.alive else ""
-                r_str = f"{pos_str} {cover} {status:>8} {u.name[:15]:>15}"
+                r_str = f"{pos_str} {cover} {status:>6} {u.name[:10]:>10}"
                 
-            print(f"{l_str:<35} | {r_str:<35}")
+            log_lines.append(f"{l_str:<30} | {r_str:<30}")
             
-        print("-" * 75)
         if self.mode == "takeover":
             # Draw a simple line visualizer
-            line = ["."] * 50
+            line = ["."] * 40
             # Mark approximate positions
             for u in self.team_0:
-                if u.alive: line[min(49, int(u.position/2))] = "P"
+                if u.alive: line[min(39, int(u.position/2.5))] = "P"
             for u in self.team_1:
-                if u.alive: line[min(49, int(u.position/2))] = "E"
-            print(f"FIELD: [0] {''.join(line)} [100]")
-            print("-" * 75)
+                if u.alive: line[min(39, int(u.position/2.5))] = "E"
+            log_lines.append(f"FIELD: [0] {''.join(line)} [100]")
 
-        for l in self.log[-5:]: # Show last 5 logs
-            print(f"> {l}")
+        for l in self.log[-3:]: # Show last 3 logs
+            log_lines.append(f"> {l}")
+            
+        renderer.render(log_text=log_lines)
 
     def run_turn(self):
         self.turn += 1
@@ -129,36 +126,45 @@ class ShootoutEngine:
         return t0_alive and t1_alive # Returns True if fight continues
 
     def player_turn(self, unit, enemies):
-        print(f"\nYOUR TURN ({unit.name})")
-        print(f"HP: {unit.hp} | Ammo: {unit.ammo} | Cover: {unit.cover_level}")
+        # Prepare GUI for Player Turn
+        log_lines = [f"YOUR TURN ({unit.name})", f"HP: {unit.hp} | Ammo: {unit.ammo} | Cover: {unit.cover_level}"]
         if self.mode == "takeover":
-            print(f"Position: {unit.position}/100")
+            log_lines.append(f"Position: {unit.position}/100")
             
-        print("Targets:")
+        log_lines.append("Targets:")
+        target_buttons = []
         for i, e in enumerate(enemies):
             dist_info = ""
             if self.mode == "takeover":
                 dist = abs(unit.position - e.position)
                 dist_info = f" (Dist: {dist})"
-            print(f"{i+1}. {e.name} (HP: {e.hp}, Cover: {e.cover_level}){dist_info}")
+            log_lines.append(f"{i+1}. {e.name} (HP: {e.hp}, Cover: {e.cover_level}){dist_info}")
+            target_buttons.append({"label": f"Shoot {e.name[:6]}", "key": str(i+1)})
             
-        actions = "[S]hoot, [C]over, [R]eload"
+        # Action Buttons
+        action_buttons = target_buttons + [
+            {"label": "Cover", "key": "C"},
+            {"label": "Reload", "key": "R"},
+            {"label": "Auto-Play", "key": "A"}
+        ]
         if self.mode == "takeover":
-            actions += ", [M]ove"
-        actions += ", [A]uto-Play Turn"
+            action_buttons.append({"label": "Move", "key": "M"})
         
-        print(f"Actions: {actions}")
+        renderer.render(log_text=log_lines, buttons=action_buttons)
         
         while True:
-            choice = input("> ").upper()
-            if choice == "S":
-                try:
-                    idx = int(input("Target #: ")) - 1
-                    if 0 <= idx < len(enemies):
-                        self.attack(unit, enemies[idx])
-                        break
-                except: pass
-            elif choice == "C":
+            choice = renderer.get_input()
+            
+            # Check if choice is a target index
+            try:
+                idx = int(choice) - 1
+                if 0 <= idx < len(enemies):
+                    self.attack(unit, enemies[idx])
+                    break
+            except ValueError:
+                pass
+                
+            if choice == "C":
                 unit.cover_level = min(2, unit.cover_level + 1)
                 self.log.append(f"{unit.name} takes cover.")
                 break
