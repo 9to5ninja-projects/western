@@ -6,6 +6,23 @@ from duel_engine_v2 import DuelEngineV2, Combatant, Action, Orientation, ai_hono
 from visualizer import renderer
 from game_utils import wait_for_user
 
+def process_gang_casualties(player, world):
+    town = world.get_town()
+    # Check for dead gang members
+    # We need to iterate a copy because we might remove them
+    for member in list(player.gang):
+        if not member.alive:
+            # 50% chance to be captured if in a town with a jail (Lawfulness > 0)
+            if town.lawfulness > 0 and random.random() < 0.5:
+                print(f"{member.name} was wounded and CAPTURED by the law!")
+                member.alive = True # They survive
+                member.hp = int(member.max_hp / 2) # Heal partially
+                town.jail.append(member)
+                player.gang.remove(member)
+            else:
+                print(f"{member.name} died in the shootout.")
+                player.gang.remove(member)
+
 def loot_screen(player, world, npc):
     while True:
         log_lines = [f"=== LOOTING {npc.name.upper()} ===", "Taking items is theft."]
@@ -499,3 +516,48 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         else:
             print("\nDRAW.")
             wait_for_user(final_log + ["", "DRAW (Time Limit Reached)."], player=player)
+
+def handle_blackout(player, world):
+    renderer.render(log_text=["Everything goes black..."], player=player)
+    time.sleep(2)
+    
+    player.drunk_counter = 0
+    world.week += 1
+    
+    # Determine Outcome
+    roll = random.random()
+    
+    # 1. Jail (High Heat or Bad Luck)
+    heat = world.get_local_heat()
+    jail_chance = 0.1 + (heat / 200.0) # 10% to 60%
+    
+    if roll < jail_chance:
+        # Jail
+        renderer.render(log_text=["You wake up in a cell."], player=player)
+        wait_for_user()
+        handle_crime(player, world, "public intoxication")
+        return
+
+    # 2. Room (If rented)
+    if player.weeks_rent_paid > 0:
+        player.weeks_rent_paid -= 1
+        player.hp = min(player.max_hp, player.hp + 10)
+        renderer.render(log_text=["You wake up in your room with a splitting headache.", "At least you made it home."], player=player)
+        wait_for_user()
+        return
+        
+    # 3. Outside (Default)
+    loss = random.randint(1, 10)
+    player.cash = max(0, player.cash - loss)
+    player.reputation = max(0, player.reputation - 5)
+    player.honor -= 5
+    
+    renderer.render(
+        log_text=[
+            "You wake up face down in the dirt.", 
+            f"Your pockets feel lighter. (Lost ${loss})",
+            "People are staring. (-5 Rep, -5 Honor)"
+        ], 
+        player=player
+    )
+    wait_for_user()

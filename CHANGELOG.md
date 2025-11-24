@@ -336,6 +336,15 @@ All notable changes to this project will be documented in this file.
 - **New Stats**:
   - `charm_mod`: Tracks temporary or permanent modifiers to the player's Charm stat.
 
+## [0.20.0] - 2025-11-23
+
+### Changed
+- **Codebase Refactoring**:
+  - **Town Logic Extraction**: Moved all town interaction logic (`visit_mayor`, `visit_sheriff`, `visit_store`, `visit_bank`, `visit_cantina`, `visit_doctor`, `visit_stables`) to a dedicated `town_actions.py` module.
+  - **World Simulation**: Extracted background world simulation logic (`generate_rival_gang`, `process_rival_gangs`, `update_world_simulation`) to `world_sim.py`.
+  - **Combat Runner**: Consolidated combat initiation and post-combat processing in `combat_runner.py`.
+  - **Main Loop Cleanup**: `main.py` is now significantly smaller and focused solely on the high-level game loop and state management.
+
 
 
 
