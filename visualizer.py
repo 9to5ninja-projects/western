@@ -72,7 +72,8 @@ class SceneRenderer:
         self.font = self._load_font()
         self.mono_font = self._load_mono_font()
         self.window = None # Lazy init
-        
+        self.current_scene_text = None
+
     def _load_font(self):
         # Try to load a default font, fallback to default
         try:
@@ -146,6 +147,7 @@ class SceneRenderer:
 
     def load_scene(self, scene_name):
         """Load a background image from assets/scenes/"""
+        self.current_scene_text = None # Reset text dashboard
         path = os.path.join(ASSET_DIR, "scenes", f"{scene_name}.png")
         if os.path.exists(path):
             self.background = Image.open(path).convert("RGBA")
@@ -195,8 +197,11 @@ class SceneRenderer:
         # 1. Create Base Canvas
         canvas = Image.new("RGB", (SCREEN_WIDTH, SCREEN_HEIGHT), (20, 20, 20))
         
+        # Determine active scene text (passed or stored)
+        active_scene_text = scene_text if scene_text else self.current_scene_text
+
         # 2. Draw Scene Area (Background + Actors OR Text Dashboard)
-        if scene_text:
+        if active_scene_text:
             # Draw Text Dashboard in Scene Area
             # Draw black background for scene area
             draw = ImageDraw.Draw(canvas)
@@ -204,7 +209,7 @@ class SceneRenderer:
             
             # Draw the text
             # We need to position it. It's a multiline string.
-            draw.text((20, 20), scene_text, fill="white", font=self.mono_font)
+            draw.text((20, 20), active_scene_text, fill="white", font=self.mono_font)
             
         else:
             # Draw Graphical Scene
@@ -534,11 +539,18 @@ class SceneRenderer:
         
         dashboard_text = "\n".join(lines)
         
+        # Store as current scene text so it persists for subsequent renders (e.g. buttons)
+        self.current_scene_text = dashboard_text
+        
         # Render using the GUI renderer, passing the text block
         log_lines = engine.log[-5:] if engine.log else ["Fight started!"]
         
         # We don't need stats_text because it's in the dashboard
         self.render(log_text=log_lines, scene_text=dashboard_text)
+
+    def clear_scene_text(self):
+        """Clear the text dashboard to return to graphical mode"""
+        self.current_scene_text = None
 
 # Global Renderer Instance
 renderer = SceneRenderer()

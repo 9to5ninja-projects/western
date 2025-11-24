@@ -413,6 +413,14 @@ All notable changes to this project will be documented in this file.
   - **Surrender Memory**: Enemies now remember if the player surrenders to them, adding a "Player surrendered to me" memory.
   - **Brawl Grudges**: Knocking out an NPC in a brawl can now create a persistent rival.
 
+## [0.26.0] - 2025-11-24
+
+### Fixed
+- **Hybrid Visualizer Overlap**:
+  - Resolved a rendering issue where graphical sprites (2D shapes/placeholders) were drawing on top of the text-based combat dashboard.
+  - **Priority Rendering**: The `SceneRenderer` now correctly prioritizes the text dashboard when active, suppressing the default graphical scene.
+  - **State Management**: Added `clear_scene_text()` to properly reset the view from text mode back to graphics mode after combat ends.
+
 ## [0.25.0] - 2025-11-24
 
 ### Added

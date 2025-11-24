@@ -215,6 +215,7 @@ def start_brawl(player, world, npc=None):
         
     renderer.render_duel_state(engine, p1, p2)
     p1.sync_state() # Save HP loss back to player
+    renderer.clear_scene_text()
     
     # Capture final combat log
     final_log = engine.log[-3:] if engine.log else []
@@ -445,6 +446,7 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         
     p1.sync_state()
     renderer.render_duel_state(engine, p1, p2)
+    renderer.clear_scene_text()
     
     # Capture final combat log
     final_log = engine.log[-3:] if engine.log else []
