@@ -632,12 +632,27 @@ class DuelEngineV2:
             p1_override = Action.WAIT
             p2_override = Action.COUNTER
 
+        # 4. Same Action Clashes
+        elif a1 == Action.JAB and a2 == Action.JAB:
+            self.log.append("CLASH! Jabs collide in mid-air!")
+            p1_override = Action.WAIT
+            p2_override = Action.WAIT
+            
+        elif a1 == Action.HOOK and a2 == Action.HOOK:
+            self.log.append("TRADING BLOWS! Both hooks connect!")
+            # Allow both to execute normally
+            
         # Execute
         final_a1 = p1_override if p1_override else a1
         final_a2 = p2_override if p2_override else a2
         
-        msgs1 = self.execute_action(self.p1, final_a1, self.p2)
-        msgs2 = self.execute_action(self.p2, final_a2, self.p1)
+        # Randomize execution order to allow for Double KOs
+        if random.random() < 0.5:
+            msgs1 = self.execute_action(self.p1, final_a1, self.p2)
+            msgs2 = self.execute_action(self.p2, final_a2, self.p1)
+        else:
+            msgs2 = self.execute_action(self.p2, final_a2, self.p1)
+            msgs1 = self.execute_action(self.p1, final_a1, self.p2)
         
         self.log.extend(msgs1)
         self.log.extend(msgs2)

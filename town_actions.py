@@ -402,7 +402,7 @@ def visit_cantina(player, world):
         stats_display = [
             f"Cash: ${player.cash:.2f}", 
             f"HP: {player.hp}/{player.max_hp}",
-            f"Brawl: {player.brawl_wins}W-{player.brawl_losses}L ({player.brawler_rep} Rep)",
+            f"Brawl: {player.brawl_wins}W-{player.brawl_losses}L-{player.brawl_draws}D ({player.brawler_rep} Rep)",
             f"Duel: {player.duel_wins}W-{player.duel_losses}L"
         ]
         

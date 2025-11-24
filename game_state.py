@@ -125,6 +125,7 @@ class PlayerState:
         # Combat Records
         self.brawl_wins = 0
         self.brawl_losses = 0
+        self.brawl_draws = 0
         self.duel_wins = 0
         self.duel_losses = 0
         self.brawler_rep = 0 # Hidden stat for brawling sidequest

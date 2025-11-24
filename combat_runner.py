@@ -267,6 +267,21 @@ def start_brawl(player, world, npc=None):
     # Capture final combat log
     final_log = engine.log[-3:] if engine.log else []
     
+    if not p1.conscious and not p2.conscious:
+        print("\nDOUBLE KNOCKOUT!")
+        log_lines = final_log + ["", "DOUBLE KNOCKOUT!"]
+        player.brawl_draws += 1
+        wait_for_user(log_lines, player=player)
+        
+        # Wake up logic (similar to loss but maybe less penalty?)
+        loss = random.randint(1, 5)
+        player.cash = max(0, player.cash - loss)
+        player.hp = min(player.max_hp, player.hp + 5)
+        world.week += 1
+        renderer.render(log_text=[f"You both wake up in the dirt.", f"Lost ${loss}. Week passed."], player=player)
+        wait_for_user()
+        return True
+
     if p1.conscious:
         print("\nYOU WON THE BRAWL!")
         

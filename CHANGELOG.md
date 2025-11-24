@@ -443,6 +443,10 @@ All notable changes to this project will be documented in this file.
   - **Counter-Attack Mechanic**: The "Block > Jab" interaction has been upgraded to a dedicated `COUNTER` action.
     - **Effect**: A successful block now triggers a guaranteed, high-damage counter-attack instead of a weak jab.
     - **Feedback**: Combat logs now clearly state "PERFECT COUNTER!" to highlight the tactical win.
+  - **Double KO & Draws**:
+    - **Simultaneous Hits**: Combatants can now trade blows (Hook vs Hook) or clash (Jab vs Jab) in the same turn.
+    - **Double Knockout**: If both fighters reach 0 HP in the same turn, the fight ends in a draw.
+    - **Record Keeping**: Added `brawl_draws` to player stats to track these rare occurrences.
 
 ## [0.26.0] - 2025-11-24
 
