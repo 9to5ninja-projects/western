@@ -84,18 +84,18 @@
 - [x] **Visual Engine Foundation**:
     - Scene Renderer (Pillow-based).
     - Asset directory structure.
-- [ ] **Menu Integration**:
+- [x] **Menu Integration**:
     - Title Screen.
     - Town Navigation (Visual backgrounds).
     - Shop Interfaces.
 - [ ] **Combat Visualization**:
-    - Duel scene rendering.
-    - Shootout scene rendering.
+    - Duel scene rendering (Currently ASCII).
+    - Shootout scene rendering (Currently ASCII).
 - [ ] **Asset Pipeline**:
     - Integration of pixel art assets.
 
-## Phase 10: Narrative Reactivity (New)
-- [ ] **Milestone Events**:
+## Phase 10: Narrative Reactivity (In Progress)
+- [x] **Milestone Events**:
     - **Infamy**: High bounty attracts US Marshals (Elite Hunters).
     - **Fame**: High Honor attracts "The Kid" (Rival Duelist seeking glory).
     - **Wealth**: High cash attracts thieves and muggers in towns.
@@ -103,6 +103,29 @@
 - [ ] **Nemesis System**:
     - Enemies who survive duels/shootouts can return with scars and vendettas.
     - Family members of killed Sheriffs/Mayors seeking revenge.
+
+## Phase 11: Gang Depth & End Game (Planned)
+- [ ] **Gang Management**:
+    - Equip members with weapons and horses.
+    - Promote lieutenants for bonuses.
+    - Manage loyalty and morale.
+- [ ] **Racket Economy**:
+    - Implement weekly income collection.
+    - Rival gang attacks on rackets.
+- [ ] **End Game Scenarios**:
+    - **Retirement**: Retire to a ranch with $5000.
+    - **Conquest**: Control all towns (Mayor of all).
+    - **Legend**: Max Reputation/Infamy.
+
+## Phase 12: Polish & Quality of Life (Planned)
+- [ ] **Save System**:
+    - Multiple save slots.
+    - Auto-save frequency settings.
+- [ ] **Settings Menu**:
+    - Text speed, Volume (if audio added), ASCII vs Graphical toggle.
+- [ ] **Bug Fixes**:
+    - Resolve circular dependencies.
+    - Fill in placeholder logic (e.g., Mayor options).
 
 
 
