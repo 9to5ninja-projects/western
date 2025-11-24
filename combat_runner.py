@@ -275,7 +275,7 @@ def start_brawl(player, world, npc=None):
             renderer.render(log_text=[f"You wake up in the dirt.", f"Lost ${loss}. Week passed."], player=player)
             
         wait_for_user()
-        return # End brawl function
+        return True # End brawl function
         
     wait_for_user()
 
@@ -360,6 +360,7 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         # Player 1 (User)
         stats_text.append(f"--- {p1.name} ---")
         stats_text.append(f"HP: {p1.hp}/{p1.max_hp}")
+        stats_text.append(f"Blood: {p1.blood}")
         
         # Visual Ammo
         ammo_p1 = "|" * p1.ammo + "." * (6 - p1.ammo)
@@ -377,6 +378,7 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         # Player 2 (Enemy)
         stats_text.append(f"--- {p2.name} ---")
         stats_text.append(f"HP: {p2.hp}/{p2.max_hp}")
+        stats_text.append(f"Blood: {p2.blood}")
         
         ammo_p2 = "|" * p2.ammo + "." * (6 - p2.ammo)
         stats_text.append(f"Ammo: [{ammo_p2}]")
@@ -513,6 +515,8 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             print("\nKNOCKED OUT.")
             player.duel_losses += 1
             wait_for_user(final_log + ["", "KNOCKED OUT."], player=player)
+            handle_doctor_visit(player, world)
+            return True # Signal that player was moved
         else:
             print("\nDRAW.")
             wait_for_user(final_log + ["", "DRAW (Time Limit Reached)."], player=player)
@@ -557,6 +561,38 @@ def handle_blackout(player, world):
             "You wake up face down in the dirt.", 
             f"Your pockets feel lighter. (Lost ${loss})",
             "People are staring. (-5 Rep, -5 Honor)"
+        ], 
+        player=player
+    )
+    wait_for_user()
+
+def handle_doctor_visit(player, world):
+    renderer.render(log_text=["You are dragged to the Doctor's office."], player=player)
+    time.sleep(2)
+    
+    cost = 10.0
+    if player.cash >= cost:
+        player.cash -= cost
+        msg = f"Doctor takes ${cost:.2f} fee."
+    else:
+        player.cash = 0
+        msg = "Doctor takes what cash you have."
+        
+    player.hp = min(player.max_hp, player.hp + 20)
+    player.blood = player.max_blood
+    player.conscious = True
+    player.injuries = [] # Heal injuries? Maybe just stabilize.
+    
+    world.week += 1
+    if player.weeks_rent_paid > 0:
+        player.weeks_rent_paid -= 1
+        
+    renderer.render(
+        log_text=[
+            "Doctor: 'You're lucky to be alive.'",
+            msg,
+            "Wounds patched. (+20 HP, Blood Restored)",
+            "One week passes."
         ], 
         player=player
     )

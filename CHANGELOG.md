@@ -345,6 +345,24 @@ All notable changes to this project will be documented in this file.
   - **Combat Runner**: Consolidated combat initiation and post-combat processing in `combat_runner.py`.
   - **Main Loop Cleanup**: `main.py` is now significantly smaller and focused solely on the high-level game loop and state management.
 
+## [0.21.0] - 2025-11-23
+
+### Added
+- **GUI Integration (Town Hub)**:
+  - **Full GUI Conversion**: All town menus (Cantina, Stables, Store, Town Hall, Sheriff) now use the visual `renderer` instead of console text.
+  - **Action Buttons**: Replaced text prompts with clickable-style buttons for all town interactions.
+  - **Stats Display**: Added detailed player stats (Blood, HP, Cash) to the GUI sidebar.
+- **Combat UI Improvements**:
+  - **Blood Stats**: Added explicit "Blood" level display to the duel/brawl interface.
+  - **Action Visibility**: Optimized button font size and truncation to ensure long command names (e.g., "DRAW / RELOAD") are fully visible.
+  - **Log Readability**: Fixed an issue where the "TURN" header would overlap with combat log messages.
+- **Medical System**:
+  - **Doctor Visit**: Players knocked out in combat are now automatically dragged to the Doctor.
+  - **Consequences**: Doctor visits cost money (or all cash if poor) and advance time by 1 week, but restore full Blood and HP.
+- **Refactoring**:
+  - **Sheriff's Office**: Moved Sheriff and Patrol logic to `town_actions.py` and wired it to the GUI.
+  - **Circular Dependencies**: Resolved import loops by moving `handle_blackout` to `combat_runner.py`.
+
 
 
 

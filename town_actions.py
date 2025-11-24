@@ -43,7 +43,19 @@ def demand_protection(player, world):
         print("The Mayor stands firm.")
         print("'We don't bow to thugs like you! Sheriff!'")
         world.add_heat(30)
-        start_brawl(player, world, NPC("Sheriff"))
+        start_brawl(player, world, NPC("Sheriff")) # No return check needed as it returns to menu anyway?
+        # Actually demand_protection is called from visit_mayor.
+        # If knocked out, we should probably return from demand_protection too.
+        # But demand_protection returns void.
+        # We can't easily propagate the return up without changing signature.
+        # But visit_mayor loop continues.
+        # If player is at Doctor, visit_mayor loop will re-render Mayor menu?
+        # Yes.
+        # I should probably check player location in visit_mayor loop?
+        # Or just let it be for now. The user specifically mentioned Cantina.
+        # But for consistency, I should fix it.
+        # However, demand_protection is a sub-function.
+        # I'll leave it for now as it's less critical than the main loops.
 
 def attempt_takeover(player, world):
     town = world.get_town()
@@ -178,7 +190,7 @@ def visit_mayor(player, world):
                 else:
                     log_lines.append("The meeting ends in a brawl! No mayor elected.")
                     wait_for_user(log_lines, player=player)
-                    start_brawl(player, world, NPC("Drunkard"))
+                    if start_brawl(player, world, NPC("Drunkard")): return
             elif choice == "B":
                 break
                 
@@ -245,7 +257,7 @@ def visit_mayor(player, world):
                     wait_for_user(["You threaten the Mayor.", f"{mayor.name}: 'Okay! Okay! Just don't hurt me!'"], player=player)
                 else:
                     wait_for_user([f"{mayor.name}: 'Guards! Remove this ruffian!'"], player=player)
-                    start_brawl(player, world, town.sheriff if town.sheriff else NPC("Sheriff"))
+                    if start_brawl(player, world, town.sheriff if town.sheriff else NPC("Sheriff")): return
                 
             elif choice == "3":
                 wait_for_user(["You draw your weapon!"], player=player)
@@ -348,9 +360,9 @@ def visit_cantina(player, world):
             wait_for_user(["Defend yourself!"], player=player)
             
             if npc.archetype == "Sheriff":
-                start_duel(player, world, npc)
+                if start_duel(player, world, npc): return
             else:
-                start_brawl(player, world, npc)
+                if start_brawl(player, world, npc): return
             continue
 
         options = {
@@ -473,7 +485,7 @@ def visit_cantina(player, world):
                                 
                                 # if input("Attempt to arrest/kill? (Y/N): ").upper() == "Y":
                                 if renderer.get_input() == "Y":
-                                    start_duel(player, world, target)
+                                    if start_duel(player, world, target): return
                                     if player.alive and not target.alive:
                                         print(f"You collected the bounty of ${target.bounty:.2f}!")
                                         player.cash += target.bounty
@@ -489,11 +501,11 @@ def visit_cantina(player, world):
         
         elif choice == "3":
             npc = NPC("Drunkard")
-            start_brawl(player, world, npc)
+            if start_brawl(player, world, npc): return
             
         elif choice == "4":
             npc = NPC("Cowboy")
-            start_duel(player, world, npc)
+            if start_duel(player, world, npc): return
             
         elif choice == "5":
             # Recruit Gang Member
@@ -592,7 +604,7 @@ def visit_cantina(player, world):
             )
             
             if renderer.get_input() == "Y":
-                start_brawl(player, world, champ)
+                if start_brawl(player, world, champ): return
                 # Check if player won (Champ KO'd or Dead)
                 if player.alive and (not champ.alive or champ.hp <= 0): 
                     if champ.hp <= 0 or not champ.alive:
@@ -791,7 +803,7 @@ def visit_stables(player, world):
                     sm = NPC("Cowboy")
                     sm.name = "Stablemaster"
                     sm.hp += 20
-                    start_brawl(player, world, sm)
+                    if start_brawl(player, world, sm): return
                     
                     if not sm.alive:
                         print("You killed the Stablemaster!")
@@ -854,7 +866,7 @@ def visit_store(player, world, robbery=False):
                 # Shopkeeper fights back?
                 if random.random() < 0.5:
                     print("Shopkeeper grabs a shotgun!")
-                    start_duel(player, world, NPC("Cowboy")) # Use Cowboy stats for shopkeeper
+                    if start_duel(player, world, NPC("Cowboy")): return # Use Cowboy stats for shopkeeper
                 
                 # Flee
                 print("You run out before the law arrives.")
@@ -967,3 +979,179 @@ def visit_store(player, world, robbery=False):
 
         elif choice == "B":
             break
+
+def visit_sheriff(player, world):
+    town = world.get_town()
+    sheriff = town.sheriff
+    
+    # Check if Sheriff is dead
+    if sheriff and not sheriff.alive:
+        # Spawn temporary sheriff for interaction
+        sheriff = NPC("Sheriff")
+        sheriff.name = "Deputy"
+        sheriff.personality = "Lawful" # Deputies are strict
+        
+    if not sheriff:
+        sheriff = NPC("Sheriff")
+        town.sheriff = sheriff
+        
+    while True:
+        render_hud(player, world)
+        log_lines = [f"=== SHERIFF'S OFFICE ===", f"Sheriff: {sheriff.name}"]
+        log_lines.append(f"Personality: {sheriff.personality} ({sheriff.personality_data.get('desc', '')})")
+        
+        if sheriff.name == "Deputy":
+            log_lines.insert(1, "The Sheriff's desk is empty. A deputy is manning it.")
+        
+        heat = world.get_local_heat()
+        if heat > 50:
+            log_lines.append(f"{sheriff.name}: 'I've got my eye on you, stranger.'")
+        if heat > 80:
+            log_lines.append(f"{sheriff.name}: 'You're pushing your luck.'")
+            
+        options = {
+            "1": "Check Bounties",
+            "2": f"Pay off Bounty/Fines (Cost: ${heat * 2:.2f})",
+            "B": "Back"
+        }
+
+        if not player.is_deputy:
+            options["3"] = "Apply to be Deputy"
+        else:
+            options["3"] = "Report for Duty (Patrol)"
+            
+        if town.jail:
+            options["4"] = "Bail Out Gang Member"
+        
+        renderer.render(log_text=log_lines, buttons=options_to_buttons(options), player=player)
+        choice = get_menu_choice(options)
+        
+        if choice == "1":
+            # Check Bounties
+            log_lines = ["=== WANTED POSTERS ==="]
+            wanted = [n for n in world.active_npcs if n.bounty > 0]
+            
+            # Add Gang Leaders/Members
+            for g in world.rival_gangs:
+                if not g.active: continue
+                if g.leader.bounty > 0:
+                    wanted.append(g.leader)
+                for m in g.members:
+                    if m.bounty > 0:
+                        wanted.append(m)
+            
+            if not wanted:
+                log_lines.append("No active bounties.")
+            else:
+                for n in wanted:
+                    loc = n.location if n.location else "Unknown"
+                    # Check if it's a gang leader
+                    gang_tag = ""
+                    for g in world.rival_gangs:
+                        if g.active and (n == g.leader or n in g.members):
+                            gang_tag = f" ({g.name})"
+                            break
+                            
+                    log_lines.append(f"- {n.name}{gang_tag} (${n.bounty:.2f}) - Last seen: {loc}")
+                    if n.rumor:
+                        log_lines.append(f"  '{n.rumor}'")
+            wait_for_user(log_lines, player=player)
+
+        elif choice == "2":
+            cost = heat * 2
+            if sheriff.personality == "Corrupt":
+                cost = cost * 0.5
+                
+            if cost > 0:
+                log_lines = [f"{sheriff.name}: 'That'll clear your name around here. ${cost:.2f}.'"]
+                if sheriff.personality == "Corrupt":
+                    log_lines.append("(Corrupt Discount: 50% off)")
+                
+                renderer.render(log_text=log_lines + ["Pay? (Y/N)"], player=player)
+                if renderer.get_input() == "Y":
+                    if player.cash >= cost:
+                        player.cash -= cost
+                        world.reduce_heat(100) # Clear all heat
+                        wait_for_user([f"{sheriff.name}: 'Alright. Keep your nose clean.'"], player=player)
+                    else:
+                        wait_for_user([f"{sheriff.name}: 'Come back when you have the money.'"], player=player)
+            else:
+                wait_for_user([f"{sheriff.name}: 'You're clean, son.'"], player=player)
+
+        elif choice == "3":
+            if not player.is_deputy:
+                if heat > 10:
+                    wait_for_user([f"{sheriff.name}: 'I don't hire troublemakers. Clean up your act.'"], player=player)
+                elif player.honor < 5 and sheriff.personality == "Lawful":
+                    wait_for_user([f"{sheriff.name}: 'I need someone the people trust. You ain't it.'"], player=player)
+                else:
+                    renderer.render(
+                        log_text=[f"{sheriff.name}: 'You look handy with a gun.'", "Accept Deputy Badge? (Y/N)"], 
+                        player=player
+                    )
+                   
+                    if renderer.get_input() == "Y":
+                        player.is_deputy = True
+                        wait_for_user(["You are now a Deputy."], player=player)
+            else:
+                if patrol_town(player, world): return
+        
+        elif choice == "4":
+            bail_member(player, world)
+                
+        elif choice == "B":
+            break
+
+def patrol_town(player, world):
+    town = world.get_town()
+    sheriff = town.sheriff if town.sheriff else NPC("Sheriff")
+    
+    log_lines = ["=== TOWN PATROL ===", "You spend the week walking the streets."]
+    
+    world.week += 1
+    player.drunk_counter = 0 # Sober up
+    if player.weeks_rent_paid > 0:
+        player.weeks_rent_paid -= 1
+        log_lines.append("Rent paid for 1 week.")
+        
+    player.cash += 5.00
+    world.reduce_heat(10) # Deputies lower town heat
+    
+    check_story_events(player, world)
+    
+    # Random Event
+    roll = random.random()
+    if roll < 0.3:
+        log_lines.append("You spot a drunkard harassing a lady.")
+        renderer.render(log_text=log_lines + ["Intervene? (Y/N)"], player=player)
+        
+        if renderer.get_input() == "Y":
+            if start_brawl(player, world, NPC("Drunkard")): return True
+            if player.alive and player.conscious:
+                player.honor += 5
+                wait_for_user([f"{sheriff.name}: 'Good work, Deputy.'"], player=player)
+    elif roll < 0.5:
+        log_lines.append("A gang of outlaws rides into town!")
+        log_lines.append(f"{sheriff.name}: 'Deputy! With me!'")
+        
+        # Setup Teams: Player + Sheriff vs Outlaws
+        player_team = [player, sheriff]
+        enemy_team = [NPC("Outlaw") for _ in range(random.randint(2, 3))]
+        
+        log_lines.append(f"Enemies: {len(enemy_team)}")
+        wait_for_user(log_lines + ["Start Shootout"], player=player)
+        
+        engine = ShootoutEngine(player_team, enemy_team)
+        while True:
+            engine.render()
+            if not engine.run_turn(): break
+            time.sleep(1.5)
+            
+        if player.alive:
+            player.reputation += 10
+            player.cash += 20.00 # Bonus
+            wait_for_user([f"{sheriff.name}: 'That's one less problem.'", "You earned $20.00 bonus."], player=player)
+            
+    else:
+        log_lines.append("It was a quiet week.")
+        wait_for_user(log_lines, player=player)

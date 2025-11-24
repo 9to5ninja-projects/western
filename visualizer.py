@@ -218,7 +218,7 @@ class SceneRenderer:
             draw.text((x, y), f"HP: {player.hp}/{player.max_hp}", fill="white", font=self.font)
             y += line_height
             blood_str = "O" * player.blood
-            draw.text((x, y), f"BLOOD: {blood_str}", fill="red", font=self.font)
+            draw.text((x, y), f"BLOOD: {blood_str} ({player.blood})", fill="red", font=self.font)
             y += line_height + 5
             
             # Stats
@@ -317,6 +317,10 @@ class SceneRenderer:
             y_off = SCENE_HEIGHT + 50
             # Show last 8 lines
             for line in log_text[-8:]:
+                # Clean line (remove leading newlines that cause overlap)
+                line = line.strip()
+                if not line: continue
+                
                 # Simple truncation to prevent overflow
                 max_chars = int(log_width / 8) # Approx char width
                 if len(line) > max_chars: line = line[:max_chars-3] + "..."
@@ -334,6 +338,12 @@ class SceneRenderer:
             draw.rectangle([btn_x, btn_y, btn_x + btn_w, btn_y + btn_h], outline="white")
             draw.text((btn_x + 10, btn_y + 10), "ACTIONS", fill="yellow", font=self.font)
             
+            # Use smaller font for buttons if available, or just fit them better
+            try:
+                btn_font = ImageFont.truetype("arial.ttf", 12)
+            except:
+                btn_font = self.font
+
             # 2-Column Layout
             col_w = (btn_w - 15) / 2
             start_y = btn_y + 40
@@ -349,11 +359,11 @@ class SceneRenderer:
                 if by + 25 > btn_y + btn_h: break 
                 
                 label = f"[{btn.get('key', '?')}] {btn.get('label', 'Action')}"
-                # Truncate label if too long for column
-                if len(label) > 18: label = label[:16] + ".."
+                # Truncate label if too long for column (allow more chars with smaller font)
+                if len(label) > 22: label = label[:20] + ".."
                 
                 draw.rectangle([bx, by, bx + col_w, by + 25], fill=(50, 50, 50), outline="white")
-                draw.text((bx + 5, by + 5), label, fill="white", font=self.font)
+                draw.text((bx + 5, by + 5), label, fill="white", font=btn_font)
 
         # Update Window if it exists
         if self.window:
@@ -415,8 +425,8 @@ class SceneRenderer:
         log_lines = engine.log[-5:] if engine.log else ["Fight started!"]
         
         stats = [
-            f"{p1.name}: {p1.hp}/{p1.max_hp} HP",
-            f"{p2.name}: {p2.hp}/{p2.max_hp} HP"
+            f"{p1.name}: {p1.hp}/{p1.max_hp} HP | Blood: {p1.blood}",
+            f"{p2.name}: {p2.hp}/{p2.max_hp} HP | Blood: {p2.blood}"
         ]
         
         self.render(stats_text=stats, log_text=log_lines)
