@@ -94,21 +94,22 @@
 - [ ] **Asset Pipeline**:
     - Integration of pixel art assets.
 
-## Phase 10: Narrative Reactivity (In Progress)
+## Phase 10: Narrative Reactivity (Completed)
 - [x] **Milestone Events**:
     - **Infamy**: High bounty attracts US Marshals (Elite Hunters).
     - **Fame**: High Honor attracts "The Kid" (Rival Duelist seeking glory).
     - **Wealth**: High cash attracts thieves and muggers in towns.
     - **Gang Power**: Large gangs attract US Cavalry patrols.
-- [ ] **Nemesis System**:
+- [x] **Nemesis System**:
     - Enemies who survive duels/shootouts can return with scars and vendettas.
-    - Family members of killed Sheriffs/Mayors seeking revenge.
+    - Family members of killed Sheriffs/Mayors seeking revenge (Partially implemented via Nemesis memory).
+    - Active hunting/ambushing by Nemeses.
 
-## Phase 11: Gang Depth & End Game (Planned)
-- [ ] **Gang Management**:
-    - Equip members with weapons and horses.
-    - Promote lieutenants for bonuses.
-    - Manage loyalty and morale.
+## Phase 11: Gang Depth & End Game (In Progress)
+- [x] **Gang Management**:
+    - Equip members with weapons and hats.
+    - Promote members (Training) for stat bonuses.
+    - Manage wages and dismiss members.
 - [ ] **Racket Economy**:
     - Implement weekly income collection.
     - Rival gang attacks on rackets.
@@ -117,7 +118,14 @@
     - **Conquest**: Control all towns (Mayor of all).
     - **Legend**: Max Reputation/Infamy.
 
-## Phase 12: Polish & Quality of Life (Planned)
+## Phase 12: Combat Refinement (Completed)
+- [x] **Combat 2.0**:
+    - **Dynamic Controls**: Context-sensitive movement keys.
+    - **Ammo Economy**: Reserve ammo, reloading, and scarcity.
+    - **Brawl Overhaul**: Surrender, Counter-Attacks, Double KOs, Draws.
+    - **Simultaneous Resolution**: Trading blows logic.
+
+## Phase 13: Polish & Quality of Life (Planned)
 - [ ] **Save System**:
     - Multiple save slots.
     - Auto-save frequency settings.

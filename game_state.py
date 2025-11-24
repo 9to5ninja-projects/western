@@ -130,6 +130,16 @@ class PlayerState:
         self.duel_losses = 0
         self.brawler_rep = 0 # Hidden stat for brawling sidequest
         self.charm_mod = 0 # Modifier for charm (e.g. from events)
+        
+        # Age Tracking
+        self.age = 25 # Years
+        self.age_months = 0 # Months (0-11)
+
+    @property
+    def age_bracket(self):
+        if self.age <= 25: return "Young"
+        if self.age >= 46: return "Old"
+        return "Adult"
 
     @property
     def max_hp(self):

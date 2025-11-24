@@ -7,7 +7,7 @@ from ui import render_hud, get_menu_choice, clear_screen, get_player_input
 from duel_engine_v2 import DuelEngineV2, Combatant, Action, Orientation, ai_cheater, ai_honorable, ai_brawler
 from shootout_engine import ShootoutEngine
 from characters import NPC
-from save_manager import save_game, load_game, save_exists
+from save_manager import save_game, load_game, save_exists, get_save_description
 from visualizer import renderer, Actor
 from game_utils import wait_for_user, options_to_buttons
 from combat_runner import start_brawl, start_duel, loot_screen, handle_crime, process_gang_casualties
@@ -63,8 +63,17 @@ class GameController:
     def state_main_menu(self):
         renderer.load_scene("title_screen")
         title_buttons = [{"label": "New Game", "key": "1"}, {"label": "Quit", "key": "Q"}]
-        if save_exists(): title_buttons.insert(1, {"label": "Continue", "key": "2"})
-        renderer.render(log_text=["Welcome to Western Legend", "Select an option..."], buttons=title_buttons)
+        
+        log_text = ["Welcome to Western Legend", "Select an option..."]
+        
+        if save_exists(): 
+            title_buttons.insert(1, {"label": "Continue", "key": "2"})
+            desc = get_save_description()
+            if desc:
+                log_text.append("")
+                log_text.append(f"Save: {desc}")
+            
+        renderer.render(log_text=log_text, buttons=title_buttons)
         choice = get_player_input("\nChoice: ").upper()
         if choice == "1": self.state = "NEW_GAME"
         elif choice == "2" and save_exists(): self.state = "LOAD_GAME"
@@ -73,28 +82,109 @@ class GameController:
     def state_new_game(self):
         clear_screen()
         renderer.load_scene("character_creation")
+        
+        # Name Entry
         name = renderer.get_text_input("Enter your name:")
         if not name: name = "The Stranger"
-        renderer.render(log_text=[f"Name: {name}", "Select Dominant Hand..."], buttons=[{"label": "Right", "key": "1"}, {"label": "Left", "key": "2"}])
-        hand = "left" if get_player_input("Choice: ") == "2" else "right"
-        towns = ["Dusty Creek", "Shinbone", "Brimstone"]
-        renderer.render(log_text=[f"Name: {name}", f"Hand: {hand}", "Select Town..."], buttons=[{"label": t, "key": str(i+1)} for i, t in enumerate(towns)])
-        try: start_town = towns[int(get_player_input("Choice: "))-1]
-        except: start_town = "Dusty Creek"
         
-        self.player = PlayerState(name)
-        self.player.dominant_hand = hand
-        self.player.location = start_town
-        self.player.cash = 12.50
-        self.player.ammo = 6
-        
+        # Legacy Mode Randomization
         if self.pending_world:
+            # Randomize for "New Drifter"
+            age = random.randint(16, 26)
+            hand = random.choice(["right", "left"])
+            towns = ["Dusty Creek", "Shinbone", "Brimstone"]
+            start_town = random.choice(towns)
+            
+            # Random Stats
+            points = (age - 15) * 2
+            brawl_atk = 5
+            brawl_def = 5
+            
+            # Distribute points randomly
+            for _ in range(points):
+                if random.random() < 0.5:
+                    brawl_atk += 1
+                else:
+                    brawl_def += 1
+            
+            self.player = PlayerState(name)
+            self.player.age = age
+            self.player.dominant_hand = hand
+            self.player.location = start_town
+            self.player.brawl_atk = brawl_atk
+            self.player.brawl_def = brawl_def
+            self.player.cash = 12.50
+            self.player.ammo = 6
+            
             self.world = self.pending_world
             self.pending_world = None
             for t in self.world.towns.values():
                 if t.player_is_mayor: t.player_is_mayor = False; t.mayor_status = "Dead"
             self.world.rumors.append(f"The legend of the previous drifter ended in {self.world.town_name}.")
+            
+            renderer.render(log_text=[
+                f"Name: {name}",
+                f"Age: {age}",
+                f"Hand: {hand.title()}",
+                f"Town: {start_town}",
+                f"Stats: {brawl_atk} Atk / {brawl_def} Def"
+            ], buttons=[{"label": "Begin Journey", "key": "ENTER"}])
+            renderer.get_input()
+            
         else:
+            # Standard Creation
+            # Age Entry
+            while True:
+                age_input = renderer.get_text_input("Enter your age (16-26):")
+                try:
+                    age = int(age_input)
+                    if 16 <= age <= 26:
+                        break
+                except:
+                    pass
+                renderer.render(log_text=["Invalid Age. Must be 16-26."])
+                time.sleep(1)
+
+            # Dominant Hand
+            renderer.render(log_text=[f"Name: {name}", f"Age: {age}", "Select Dominant Hand..."], buttons=[{"label": "Right", "key": "1"}, {"label": "Left", "key": "2"}])
+            hand = "left" if get_player_input("Choice: ") == "2" else "right"
+            
+            # Starting Town
+            towns = ["Dusty Creek", "Shinbone", "Brimstone"]
+            renderer.render(log_text=[f"Name: {name}", f"Age: {age}", f"Hand: {hand}", "Select Town..."], buttons=[{"label": t, "key": str(i+1)} for i, t in enumerate(towns)])
+            try: start_town = towns[int(get_player_input("Choice: "))-1]
+            except: start_town = "Dusty Creek"
+            
+            self.player = PlayerState(name)
+            self.player.age = age
+            self.player.dominant_hand = hand
+            self.player.location = start_town
+            self.player.cash = 12.50
+            self.player.ammo = 6
+            
+            # Point Distribution
+            points = (age - 15) * 2
+            while points > 0:
+                renderer.render(
+                    log_text=[
+                        f"Points Remaining: {points}",
+                        f"Brawl Atk: {self.player.brawl_atk}",
+                        f"Brawl Def: {self.player.brawl_def}",
+                        "Distribute Points..."
+                    ],
+                    buttons=[
+                        {"label": "+1 Atk", "key": "1"},
+                        {"label": "+1 Def", "key": "2"}
+                    ]
+                )
+                choice = renderer.get_input()
+                if choice == "1":
+                    self.player.brawl_atk += 1
+                    points -= 1
+                elif choice == "2":
+                    self.player.brawl_def += 1
+                    points -= 1
+            
             self.world = WorldState()
             for _ in range(random.randint(1, 2)): generate_rival_gang(self.world)
             for town in self.world.towns.values():
@@ -102,8 +192,8 @@ class GameController:
                 town.sheriff = NPC("Sheriff"); town.sheriff.location = town.name
                 self.world.active_npcs.extend([town.mayor, town.sheriff])
         
-        self.world.town_name = start_town
-        print(f"\nWelcome, {name}. Your journey begins in {start_town}.")
+        self.world.town_name = self.player.location
+        print(f"\nWelcome, {name}. Your journey begins in {self.player.location}.")
         time.sleep(2)
         self.state = "TOWN_HUB"
 
@@ -215,6 +305,15 @@ def new_game(existing_world=None):
     name = renderer.get_text_input("Enter your name:")
     if not name: name = "The Stranger"
     
+    # Age Entry
+    age_input = renderer.get_text_input("Enter your age (18-60):")
+    try:
+        age = int(age_input)
+        if age < 18: age = 18
+        if age > 60: age = 60
+    except:
+        age = 25
+    
     # Dominant Hand
     hand_buttons = [
         {"label": "Right Handed", "key": "1"},
@@ -244,6 +343,7 @@ def new_game(existing_world=None):
         start_town = "Dusty Creek"
         
     player = PlayerState(name)
+    player.age = age
     player.dominant_hand = hand
     player.location = start_town
     player.cash = 12.50

@@ -481,6 +481,21 @@ All notable changes to this project will be documented in this file.
 - **Combat Logic**:
   - **Simultaneous Execution**: "Trading Blows" (Hook vs Hook) now forces both attacks to execute, ensuring Double KOs are mechanically possible.
 
+## [0.31.0] - 2025-11-24
+
+### Added
+- **Character Age System**:
+  - **Age Tracking**: Players now have a persistent age (Years + Months) that advances over time.
+  - **Time Scale**: 4 in-game weeks equal 1 in-game month.
+  - **Character Creation**: Players can now select their starting age (16-26) during character creation.
+  - **Point Distribution**: Starting stats (`Brawl Atk` / `Brawl Def`) are determined by age. Players receive `(Age - 15) * 2` points to distribute.
+  - **GUI Display**: The sidebar now displays the character's current age (e.g., "25y 3m").
+  - **Save Migration**: Legacy save files are automatically updated with default age values (25y 0m) to prevent compatibility issues.
+- **Age Restrictions**:
+  - **Alcohol**: Characters under 18 cannot purchase alcohol in the Cantina unless they pass a Charm check.
+- **Save System Polish**:
+  - **Save Metadata**: Save files now store a description (Name, Age, Location, Week) which is displayed in the Main Menu before loading.
+
 
 
 

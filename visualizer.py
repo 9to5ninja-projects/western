@@ -246,6 +246,14 @@ class SceneRenderer:
             # Name & Cash
             draw.text((x, y), f"NAME: {player.name}", fill="white", font=self.font)
             y += line_height
+            
+            # Age
+            age_str = f"{player.age}y"
+            if hasattr(player, 'age_months') and player.age_months > 0:
+                age_str += f" {player.age_months}m"
+            draw.text((x, y), f"AGE: {age_str}", fill="white", font=self.font)
+            y += line_height
+            
             draw.text((x, y), f"CASH: ${player.cash:.2f}", fill="lightgreen", font=self.font)
             y += line_height + 5
             

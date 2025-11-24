@@ -415,6 +415,16 @@ def visit_cantina(player, world):
         choice = get_menu_choice(options)
         
         if choice == "1":
+            # Age Check
+            if player.age < 18:
+                # Charm Check to bypass
+                difficulty = 30
+                skill = player.charm * 10 + player.luck_base
+                
+                if skill < difficulty:
+                    wait_for_user(["Bartender: 'You look a bit young, kid.'", "He refuses to serve you."], player=player)
+                    continue
+            
             if player.cash >= 0.50:
                 player.cash -= 0.50
                 player.hp = min(player.max_hp, player.hp + 5)

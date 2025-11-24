@@ -6,7 +6,8 @@ SAVE_FILE = "savegame.pkl"
 def save_game(player, world):
     data = {
         "player": player,
-        "world": world
+        "world": world,
+        "description": f"{player.name} - {player.age}y {player.age_months}m - {player.location} - Week {world.week}"
     }
     try:
         with open(SAVE_FILE, "wb") as f:
@@ -48,6 +49,8 @@ def migrate_save_data(player, world):
     if not hasattr(player, 'camp_name'): player.camp_name = "Wilderness Camp"
     if not hasattr(player, 'camp_horses'): player.camp_horses = []
     if not hasattr(player, 'stables_training_counts'): player.stables_training_counts = {}
+    if not hasattr(player, 'age'): player.age = 25
+    if not hasattr(player, 'age_months'): player.age_months = 0
     
     # 3. Migrate World
     if not hasattr(world, 'rumors'): world.rumors = []
@@ -73,3 +76,43 @@ def load_game():
 
 def save_exists():
     return os.path.exists(SAVE_FILE)
+
+def get_save_description():
+    if not os.path.exists(SAVE_FILE):
+        return None
+    
+    try:
+        with open(SAVE_FILE, "rb") as f:
+            data = pickle.load(f)
+            
+        if "description" in data:
+            return data["description"]
+            
+        # Fallback for legacy saves
+        player = data["player"]
+        world = data["world"]
+        age = getattr(player, 'age', 25)
+        months = getattr(player, 'age_months', 0)
+        return f"{player.name} - {age}y {months}m - {player.location} - Week {world.week}"
+    except Exception as e:
+        return "Unknown Save State"
+
+def get_save_description():
+    if not os.path.exists(SAVE_FILE):
+        return None
+    
+    try:
+        with open(SAVE_FILE, "rb") as f:
+            data = pickle.load(f)
+            
+        if "description" in data:
+            return data["description"]
+            
+        # Fallback for legacy saves
+        player = data["player"]
+        world = data["world"]
+        age = getattr(player, 'age', 25)
+        months = getattr(player, 'age_months', 0)
+        return f"{player.name} - {age}y {months}m - {player.location} - Week {world.week}"
+    except Exception as e:
+        return "Unknown Save State"

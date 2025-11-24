@@ -142,6 +142,16 @@ def update_world_simulation(world, player=None):
     # 5. Nemesis System
     if player:
         process_nemesis_system(world, player)
+        
+        # 6. Player Aging
+        # Approx 1 month every 4 weeks
+        if world.week % 4 == 0:
+            if hasattr(player, 'age_months'):
+                player.age_months += 1
+                if player.age_months >= 12:
+                    player.age_months = 0
+                    player.age += 1
+                    world.rumors.append(f"Happy Birthday! You are now {player.age}.")
 
 def process_nemesis_system(world, player):
     # Find all active NPCs who are Nemeses
