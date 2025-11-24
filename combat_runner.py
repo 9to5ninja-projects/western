@@ -343,25 +343,78 @@ def start_duel(player, world, npc=None, is_sheriff=False):
                 player.honor -= 5
                 # Continue to action selection
         
-        # Define primary buttons for GUI (limited space)
-        duel_buttons = [
-            {"label": "SHOOT CENTER", "key": "4"},
-            {"label": "DRAW / RELOAD", "key": "3/7"},
-            {"label": "PACE / TURN", "key": "1/2"},
-            {"label": "DUCK / JUMP", "key": "8/J"}
-        ]
+        # --- DYNAMIC BUTTON LOGIC ---
+        duel_buttons = []
         
-        # Contextual Actions
-        if p1.is_ducking:
-             duel_buttons.append({"label": "RISE & FIRE", "key": "R"})
-        else:
-             duel_buttons.append({"label": "DUCK & FIRE", "key": "D"})
+        # 1. Movement / Turning (Keys 1 & 2)
+        # Determine Visual Facing
+        is_facing_right = False
+        if p1.direction_multiplier == -1: # Left Side
+            if p1.orientation == Orientation.FACING_OPPONENT: is_facing_right = True
+        else: # Right Side
+            if p1.orientation == Orientation.FACING_AWAY: is_facing_right = True
 
-        if p1.orientation == Orientation.FACING_OPPONENT and engine.get_distance() <= 3:
+        action_1 = Action.WAIT
+        action_2 = Action.WAIT
+        
+        if is_facing_right:
+            # Facing Right (>)
+            # 1 (Left) -> Turn Left
+            action_1 = Action.TURN
+            duel_buttons.append({"label": "TURN LEFT", "key": "1"})
+            
+            # 2 (Right) -> Step Right
+            if p1.direction_multiplier == -1: action_2 = Action.STEP_IN # Toward Center
+            else: action_2 = Action.PACE # Away Center
+            duel_buttons.append({"label": "STEP RIGHT", "key": "2"})
+        else:
+            # Facing Left (<)
+            # 1 (Left) -> Step Left
+            if p1.direction_multiplier == -1: action_1 = Action.PACE # Away Center
+            else: action_1 = Action.STEP_IN # Toward Center
+            duel_buttons.append({"label": "STEP LEFT", "key": "1"})
+            
+            # 2 (Right) -> Turn Right
+            action_2 = Action.TURN
+            duel_buttons.append({"label": "TURN RIGHT", "key": "2"})
+
+        # 2. Weapon Actions (Key 3/7)
+        if p1.weapon_state == "holstered" or str(p1.weapon_state) == "WeaponState.HOLSTERED":
+            duel_buttons.append({"label": "DRAW", "key": "3"})
+        elif p1.ammo < 6:
+            duel_buttons.append({"label": "RELOAD", "key": "7"})
+        
+        # 3. Shooting Actions (Keys 4, 5, 6) - Only if Drawn
+        if p1.weapon_state == "drawn" or str(p1.weapon_state) == "WeaponState.DRAWN":
+            duel_buttons.append({"label": "SHOOT BODY", "key": "4"})
+            duel_buttons.append({"label": "SHOOT HEAD", "key": "5"})
+            duel_buttons.append({"label": "SHOOT LEGS", "key": "6"})
+            
+        # 4. Stance (Key 8)
+        if p1.is_ducking:
+            duel_buttons.append({"label": "STAND", "key": "8"})
+        else:
+            duel_buttons.append({"label": "DUCK", "key": "8"})
+            
+        # 5. Evasion (Key J)
+        duel_buttons.append({"label": "JUMP", "key": "J"})
+        
+        # 6. Contextual Melee / Dirty
+        dist = engine.get_distance()
+        if dist <= 2:
+            duel_buttons.append({"label": "PUNCH", "key": "P"})
+        elif dist <= 3 and p1.orientation == Orientation.FACING_OPPONENT:
             duel_buttons.append({"label": "KICK SAND", "key": "K"})
             
-        if engine.get_distance() <= 2:
-            duel_buttons.append({"label": "PUNCH", "key": "P"})
+        # 7. Surrender (Key 9)
+        duel_buttons.append({"label": "SURRENDER", "key": "9"})
+        
+        # Contextual Fire Actions (Duck/Stand Fire) - Optional if space permits
+        # We have used: 1, 2, 3/7, 4, 5, 6, 8, J, P/K, 9 = 10 buttons max.
+        # If we have space (e.g. not shooting), we can add more?
+        # Actually, Duck Fire / Stand Fire are combos. Let's keep them as hidden shortcuts or replace standard shoot?
+        # User said "use them efficiently".
+        # Let's stick to the core set above.
         
         log_lines = engine.log[-5:] if engine.log else ["Duel started."]
         
@@ -409,15 +462,24 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         
         choice = renderer.get_input()
         
-        map_act = {
-            "1": Action.PACE, "2": Action.TURN, "3": Action.DRAW,
-            "4": Action.SHOOT_CENTER, "5": Action.SHOOT_HIGH,
-            "6": Action.SHOOT_LOW, "7": Action.RELOAD, "8": Action.DUCK,
-            "9": Action.SURRENDER, "0": Action.STEP_IN, "J": Action.JUMP,
-            "D": Action.DUCK_FIRE, "R": Action.STAND_FIRE, "K": Action.KICK_SAND,
-            "P": Action.PUNCH
-        }
-        p1_act = map_act.get(choice, Action.WAIT)
+        # Dynamic Mapping
+        p1_act = Action.WAIT
+        
+        if choice == "1": p1_act = action_1
+        elif choice == "2": p1_act = action_2
+        elif choice == "3": p1_act = Action.DRAW
+        elif choice == "4": p1_act = Action.SHOOT_CENTER
+        elif choice == "5": p1_act = Action.SHOOT_HIGH
+        elif choice == "6": p1_act = Action.SHOOT_LOW
+        elif choice == "7": p1_act = Action.RELOAD
+        elif choice == "8": 
+            p1_act = Action.STAND if p1.is_ducking else Action.DUCK
+        elif choice == "9": p1_act = Action.SURRENDER
+        elif choice == "J": p1_act = Action.JUMP
+        elif choice == "P": p1_act = Action.PUNCH
+        elif choice == "K": p1_act = Action.KICK_SAND
+        elif choice == "D": p1_act = Action.DUCK_FIRE
+        elif choice == "R": p1_act = Action.STAND_FIRE
         
         # AI (Cheater or Honorable?)
         p2_act = ai_honorable(p2, p1, engine)

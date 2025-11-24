@@ -413,6 +413,16 @@ All notable changes to this project will be documented in this file.
   - **Surrender Memory**: Enemies now remember if the player surrenders to them, adding a "Player surrendered to me" memory.
   - **Brawl Grudges**: Knocking out an NPC in a brawl can now create a persistent rival.
 
+## [0.27.0] - 2025-11-24
+
+### Added
+- **Dynamic Combat Controls**:
+  - **Context-Sensitive Movement**: Keys `1` and `2` now dynamically map to "Step" or "Turn" based on the player's visual facing direction.
+    - **Facing Left**: `1` Steps Left, `2` Turns Right.
+    - **Facing Right**: `1` Turns Left, `2` Steps Right.
+  - **Efficient Action Bar**: The combat GUI now only displays relevant actions (e.g., "DRAW" is hidden if weapon is drawn, "RELOAD" appears only when ammo is low).
+  - **Button Optimization**: Consolidated combat actions to fit within the 10-button limit while maintaining full tactical depth.
+
 ## [0.26.0] - 2025-11-24
 
 ### Fixed
