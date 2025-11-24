@@ -172,8 +172,8 @@ def start_brawl(player, world, npc=None):
     wait_for_user("FIGHT ON!")
     
     # Create Combatants
-    p1 = Combatant(player.name, -1, player)
-    p2 = Combatant(npc.name, 1)
+    p1 = Combatant(player.name, -1, player, source_obj=player)
+    p2 = Combatant(npc.name, 1, source_obj=npc)
     # Sync NPC stats to Combatant
     p2.brawl_atk = npc.brawl_atk
     p2.brawl_def = npc.brawl_def
@@ -296,8 +296,8 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         
     wait_for_user([f"You challenge {npc.name} ({npc.archetype}) to a duel!", "WALK OUT"], player=player)
     
-    p1 = Combatant(player.name, -1, player)
-    p2 = Combatant(npc.name, 1)
+    p1 = Combatant(player.name, -1, player, source_obj=player)
+    p2 = Combatant(npc.name, 1, source_obj=npc)
     p2.acc = npc.acc
     p2.spd = npc.spd
     p2.hp = npc.hp
@@ -306,8 +306,7 @@ def start_duel(player, world, npc=None, is_sheriff=False):
     engine = DuelEngineV2(p1, p2)
     
     # Duel Loop
-    turn_count = 0
-    while p1.alive and p2.alive and turn_count < 20:
+    while p1.alive and p2.alive:
         renderer.render_duel_state(engine, p1, p2)
         
         # Check if opponent surrendered in PREVIOUS turn
@@ -441,8 +440,6 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             print(f"They took ${loss} from you.")
             break
             
-        turn_count += 1
-        
         if not p1.conscious:
             break
         
@@ -547,16 +544,13 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         wait_for_user(final_log + ["", "DEFEAT."], player=player)
         
     else:
-        # Draw or Knocked Out
+        # Knocked Out
         if not p1.conscious:
             print("\nKNOCKED OUT.")
             player.duel_losses += 1
             wait_for_user(final_log + ["", "KNOCKED OUT."], player=player)
             handle_doctor_visit(player, world)
             return True # Signal that player was moved
-        else:
-            print("\nDRAW.")
-            wait_for_user(final_log + ["", "DRAW (Time Limit Reached)."], player=player)
 
 def handle_blackout(player, world):
     renderer.render(log_text=["Everything goes black..."], player=player)

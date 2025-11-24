@@ -352,6 +352,7 @@ def bail_member(player, world):
 
 
 def visit_cantina(player, world):
+    renderer.load_scene("cantina")
     while True:
         render_hud(player, world)
         print("\n=== THE RUSTY SPUR CANTINA ===")
@@ -638,6 +639,7 @@ def visit_cantina(player, world):
             break
 
 def visit_stables(player, world):
+    renderer.load_scene("stables")
     # Prepare horses
     horses_for_sale = list(AVAILABLE_HORSES)
     town = world.get_town()
@@ -844,6 +846,7 @@ def visit_stables(player, world):
             break
 
 def visit_store(player, world, robbery=False):
+    renderer.load_scene("store")
     # Prepare inventory for this visit
     weapons_for_sale = list(AVAILABLE_WEAPONS)
     hats_for_sale = list(AVAILABLE_HATS)
@@ -1001,6 +1004,7 @@ def visit_store(player, world, robbery=False):
             break
 
 def visit_sheriff(player, world):
+    renderer.load_scene("sheriff")
     town = world.get_town()
     sheriff = town.sheriff
     

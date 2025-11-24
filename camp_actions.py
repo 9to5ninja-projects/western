@@ -13,6 +13,7 @@ from save_manager import save_game
 import sys
 
 def visit_camp(player, world):
+    renderer.load_scene("camp")
     while True:
         render_hud(player, world)
         

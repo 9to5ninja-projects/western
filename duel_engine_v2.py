@@ -48,9 +48,10 @@ class Action(Enum):
     WAIT = "wait"
 
 class Combatant:
-    def __init__(self, name, direction_multiplier, player_state=None):
+    def __init__(self, name, direction_multiplier, player_state=None, source_obj=None):
         self.name = name
-        self.player_state = player_state # Reference to persistent state
+        self.player_state = player_state # Reference to persistent state (Legacy, prefer source_obj)
+        self.source_obj = source_obj # The original Player or NPC object
         
         if player_state:
             self.blood = player_state.blood

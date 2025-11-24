@@ -413,6 +413,18 @@ All notable changes to this project will be documented in this file.
   - **Surrender Memory**: Enemies now remember if the player surrenders to them, adding a "Player surrendered to me" memory.
   - **Brawl Grudges**: Knocking out an NPC in a brawl can now create a persistent rival.
 
+## [0.25.0] - 2025-11-24
+
+### Added
+- **Visuals Update (Phase 9)**:
+  - **Dynamic Sprites**: The visualizer now reads NPC archetypes (Sheriff, Mayor, Outlaw) to determine placeholder colors/sprites.
+  - **Visual Scars**: NPCs with scars (e.g., from surviving a duel) now have visual indicators in the combat view.
+  - **Scene Management**: Specific background scenes are now loaded for the Cantina, Stables, Store, Sheriff's Office, and Camp.
+- **Save System Robustness**:
+  - **Migration Tool**: Added `migrate_save_data` to `save_manager.py` to automatically update old save files with new Nemesis/Gang attributes, preventing crashes when loading legacy saves.
+- **Code Architecture**:
+  - **Combatant Source**: `Combatant` objects now retain a reference to their source `NPC` or `Player` object, allowing the visualizer to access deep lore/stats during combat.
+
 
 
 

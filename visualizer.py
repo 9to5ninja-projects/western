@@ -11,13 +11,15 @@ SCENE_HEIGHT = 380
 ASSET_DIR = "assets"
 
 class Actor:
-    def __init__(self, name, sprite_base, x, y, state="idle", facing_left=False):
+    def __init__(self, name, sprite_base, x, y, state="idle", facing_left=False, scars=None, archetype=None):
         self.name = name
         self.sprite_base = sprite_base # Folder name in assets/sprites/
         self.x = x
         self.y = y
         self.state = state
         self.facing_left = facing_left
+        self.scars = scars if scars else []
+        self.archetype = archetype
 
 class GameWindow:
     def __init__(self):
@@ -158,9 +160,22 @@ class SceneRenderer:
             return Image.open(path).convert("RGBA")
         else:
             # Placeholder sprite
-            img = Image.new("RGBA", (50, 100), (255, 0, 0, 255))
+            # Color based on archetype
+            color = (255, 0, 0, 255) # Default Red
+            if actor.archetype == "Sheriff": color = (0, 0, 255, 255) # Blue
+            if actor.archetype == "Mayor": color = (255, 215, 0, 255) # Gold
+            if actor.archetype == "Hero": color = (255, 255, 255, 255) # White
+            
+            img = Image.new("RGBA", (50, 100), color)
             draw = ImageDraw.Draw(img)
-            draw.text((5, 40), actor.name[:4], fill="white", font=self.font)
+            
+            # Draw Name
+            draw.text((5, 40), actor.name[:4], fill="black", font=self.font)
+            
+            # Draw Scars
+            if actor.scars:
+                draw.text((5, 60), "X", fill="black", font=self.font) # Mark for scars
+                
             return img
 
     def render(self, stats_text=None, log_text=None, buttons=None, player=None, world=None):
@@ -416,9 +431,21 @@ class SceneRenderer:
         p2_facing_left = (p2.orientation.value == "facing opponent" and p2.direction_multiplier == 1) or \
                          (p2.orientation.value == "facing away" and p2.direction_multiplier == -1)
 
+        # Extract Visual Details from Source Object
+        p1_scars = []
+        p1_arch = "Hero"
+        if p1.source_obj and hasattr(p1.source_obj, 'scars'): p1_scars = p1.source_obj.scars
+        # Player doesn't have archetype usually, but we can check
+        
+        p2_scars = []
+        p2_arch = "Bandit"
+        if p2.source_obj:
+            if hasattr(p2.source_obj, 'scars'): p2_scars = p2.source_obj.scars
+            if hasattr(p2.source_obj, 'archetype'): p2_arch = p2.source_obj.archetype
+
         # Add Actors
-        self.add_actor(Actor(p1.name, "cowboy_male", p1_x, 300, p1_state, p1_facing_left))
-        self.add_actor(Actor(p2.name, "bandit_male", p2_x, 300, p2_state, p2_facing_left))
+        self.add_actor(Actor(p1.name, "cowboy_male", p1_x, 300, p1_state, p1_facing_left, scars=p1_scars, archetype=p1_arch))
+        self.add_actor(Actor(p2.name, "bandit_male", p2_x, 300, p2_state, p2_facing_left, scars=p2_scars, archetype=p2_arch))
         
         # 3. Render
         # Convert log to list
