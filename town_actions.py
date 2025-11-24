@@ -151,9 +151,24 @@ def visit_mayor(player, world):
                 town.heat += 20
                 town.influence -= 5
                 wait_for_user(["You squeeze the locals for cash.", "Collected $50. Heat increased."], player=player)
+            elif choice == "2":
+                if player.cash >= 50:
+                    player.cash -= 50
+                    town.lawfulness += 10
+                    town.heat = max(0, town.heat - 20)
+                    wait_for_user(["You hired a new Sheriff.", "Lawfulness increased. Heat reduced."], player=player)
+                else:
+                    wait_for_user(["Not enough cash."], player=player)
+            elif choice == "3":
+                if player.cash >= 100:
+                    player.cash -= 100
+                    player.reputation += 20
+                    town.influence += 10
+                    wait_for_user(["You hosted a lavish gala.", "The town loves you! (+20 Rep)"], player=player)
+                else:
+                    wait_for_user(["Not enough cash."], player=player)
             elif choice == "B":
                 break
-            # TODO: Implement others
             
         elif town.mayor_status == "Dead":
             log_lines.append("The Mayor's office is empty. The previous mayor was killed.")
@@ -739,6 +754,7 @@ def visit_stables(player, world):
             # print("You earned $2.00. People respect honest work. (+1 Honor)")
             log_lines.append("You earned $2.00. (+1 Honor)")
             
+            update_world_simulation(world, player) # Update world while working
             check_story_events(player, world)
             
             wait_for_user(log_lines, player=player)
@@ -772,6 +788,7 @@ def visit_stables(player, world):
             # print("You earned $3.00. (+1 Honor)")
             log_lines.append("You earned $3.00. (+1 Honor)")
             
+            update_world_simulation(world, player) # Update world while working
             check_story_events(player, world)
             
             wait_for_user(log_lines, player=player)
@@ -1120,6 +1137,7 @@ def patrol_town(player, world):
     player.cash += 5.00
     world.reduce_heat(10) # Deputies lower town heat
     
+    update_world_simulation(world, player)
     check_story_events(player, world)
     
     # Random Event

@@ -5,6 +5,7 @@ from characters import NPC
 from duel_engine_v2 import DuelEngineV2, Combatant, Action, Orientation, ai_honorable
 from visualizer import renderer
 from game_utils import wait_for_user
+from world_sim import update_world_simulation
 
 def process_gang_casualties(player, world):
     town = world.get_town()
@@ -155,6 +156,11 @@ def handle_crime(player, world, crime_name):
             player.weeks_rent_paid = max(0, player.weeks_rent_paid - jail_time)
             
         world.reduce_heat(20)
+        
+        # Simulate world during jail time
+        for _ in range(min(jail_time, 5)): # Cap at 5 updates to avoid lag/spam
+            update_world_simulation(world, player)
+            
         wait_for_user(log_msg, player=player)
     else:
         start_duel(player, world, is_sheriff=True)
@@ -256,6 +262,11 @@ def start_brawl(player, world, npc=None):
         print("\nYou were knocked out...")
         player.brawl_losses += 1
         player.brawler_rep = max(0, player.brawler_rep - 5)
+        
+        if npc:
+            npc.add_memory("Knocked out player in a brawl", 10)
+            if npc not in world.active_npcs:
+                world.active_npcs.append(npc)
         
         log_lines = final_log + ["", "You were knocked out..."]
         wait_for_user(log_lines, player=player)
@@ -418,6 +429,12 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             print(f"\n{p2.name} accepts your surrender.")
             wait_for_user([f"{p2.name} accepts your surrender."], player=player)
             p1.conscious = False # End loop
+            
+            # Memory: Player surrendered
+            npc.add_memory("Player surrendered to me", 20)
+            if npc not in world.active_npcs:
+                world.active_npcs.append(npc)
+                
             # Consequences?
             loss = random.randint(5, 15)
             player.cash = max(0, player.cash - loss)
@@ -491,6 +508,8 @@ def start_duel(player, world, npc=None, is_sheriff=False):
                 npc.hp = 10 # Barely alive
                 npc.add_scar(random.choice(["Ugly Scar", "Limp", "One Eye", "Broken Hand"]))
                 npc.add_memory("Player defeated me in a duel", -50)
+                if npc not in world.active_npcs:
+                    world.active_npcs.append(npc)
                 log_lines.append("You leave them for dead...")
             else:
                 npc.alive = False # Confirmed kill
@@ -545,6 +564,7 @@ def handle_blackout(player, world):
     
     player.drunk_counter = 0
     world.week += 1
+    update_world_simulation(world, player)
     
     # Determine Outcome
     roll = random.random()
@@ -605,6 +625,8 @@ def handle_doctor_visit(player, world):
     if player.weeks_rent_paid > 0:
         player.weeks_rent_paid -= 1
         
+    update_world_simulation(world, player)
+    
     renderer.render(
         log_text=[
             "Doctor: 'You're lucky to be alive.'",

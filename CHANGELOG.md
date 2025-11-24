@@ -393,6 +393,26 @@ All notable changes to this project will be documented in this file.
   - **Rumors**: Nemeses generate threatening rumors in the world simulation.
   - **Dialogue**: Nemeses have unique dialogue lines referencing their past defeat.
 
+## [0.24.0] - 2025-11-24
+
+### Added
+- **Active Nemesis Hunting**:
+  - **World Simulation**: Nemeses now actively track the player's location across the map during world updates.
+  - **Ambush System**: Traveling on roads carries a risk of being intercepted by a hunting Nemesis, triggering an unavoidable duel.
+  - **Time Propagation**: All time-passing actions (Sleep, Work, Jail, Doctor) now correctly update the world simulation, allowing enemies to close the distance while the player waits.
+- **Gang Management (Phase 11)**:
+  - **Equipment**: Players can now equip gang members with weapons and hats from their own inventory.
+  - **Training**: Players can pay $50 to "Promote" gang members, permanently increasing their HP, Accuracy, and Speed.
+  - **Interaction**: Added dialogue options to talk to gang members or kick them out.
+  - **Status Tracking**: View detailed stats (HP, Wage, Equipment) for all gang members.
+- **Town Politics & Control**:
+  - **Mayor Actions**: Players who become Mayor can now Hire Sheriffs, Host Galas, and Collect Taxes.
+  - **Power Vacuum**: If a Mayor is killed, players can declare Martial Law (Takeover) or call for a Special Election.
+  - **Stable Work**: Working at the stables now correctly advances world time and reduces town heat.
+- **Combat Consequences**:
+  - **Surrender Memory**: Enemies now remember if the player surrenders to them, adding a "Player surrendered to me" memory.
+  - **Brawl Grudges**: Knocking out an NPC in a brawl can now create a persistent rival.
+
 
 
 

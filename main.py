@@ -361,7 +361,27 @@ def travel_menu(player, world):
                     renderer.render(log_text=[f"Week {w+1} on the trail..."], player=player)
                     time.sleep(0.5)
                     world.week += 1
-                    update_world_simulation(world)
+                    update_world_simulation(world, player)
+                    
+                    # Check for Nemesis Ambush
+                    ambush_triggered = False
+                    for npc in world.active_npcs:
+                        if npc.is_nemesis and npc.vendetta_target == "Player" and npc.alive:
+                            if npc.location in [world.town_name, dest]:
+                                # 50% chance to intercept if in same/dest town
+                                if random.random() < 0.5:
+                                    renderer.render(
+                                        log_text=[f"AMBUSH! {npc.name} found you!", f"'{npc.get_line()}'", "Fight for your life!"],
+                                        player=player
+                                    )
+                                    wait_for_user()
+                                    start_duel(player, world, npc)
+                                    ambush_triggered = True
+                                    break
+                    
+                    if ambush_triggered:
+                        break
+
                     # Random Event Chance
                     if random.random() < 0.2:
                         # Check for Rival Gang Ambush
@@ -570,7 +590,7 @@ def sleep(player, world):
                 player.weeks_rent_paid -= 1
                 player.drunk_counter = 0 # Sober up
                 
-                update_world_simulation(world)
+                update_world_simulation(world, player)
                 process_healing(player)
                 
                 # Story Events
@@ -604,7 +624,7 @@ def sleep(player, world):
             player.hp = min(player.max_hp, player.hp + 5) # Less healing
             player.drunk_counter = 0 # Sober up
             
-            update_world_simulation(world)
+            update_world_simulation(world, player)
             process_healing(player)
             
             renderer.render(log_text=["You slept in the dirt.", "It was rough."], player=player)

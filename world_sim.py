@@ -88,7 +88,7 @@ def process_rival_gangs(world):
                     gang.members.append(new_member)
                     world.rumors.append(f"{gang.name} is recruiting in {gang.hideout}.")
 
-def update_world_simulation(world):
+def update_world_simulation(world, player=None):
     # 1. Spawn new NPCs if low
     if len(world.active_npcs) < 5:
         if random.random() < 0.5:
@@ -140,9 +140,10 @@ def update_world_simulation(world):
     process_rival_gangs(world)
     
     # 5. Nemesis System
-    process_nemesis_system(world)
+    if player:
+        process_nemesis_system(world, player)
 
-def process_nemesis_system(world):
+def process_nemesis_system(world, player):
     # Find all active NPCs who are Nemeses
     nemeses = []
     
@@ -163,18 +164,22 @@ def process_nemesis_system(world):
     # Process Actions
     for nem in nemeses:
         # 1. Hunt Player
-        # If player location is known (e.g. Town Hub), move towards it?
-        # For now, just random movement but with higher aggression
+        # If not in same town, try to move closer
+        if nem.location != player.location:
+            neighbors = list(world.map.get(nem.location, {}).keys())
+            # Check if player is in a neighbor
+            if player.location in neighbors:
+                if random.random() < 0.7: # High chance to pursue
+                    nem.location = player.location
+                    world.rumors.append(f"{nem.name} has tracked you to {nem.location}.")
+            else:
+                # Move randomly to try and find?
+                if random.random() < 0.3 and neighbors:
+                    nem.location = random.choice(neighbors)
         
         # 2. Generate Threatening Rumor
-        if random.random() < 0.5:
+        if random.random() < 0.3:
             rumor = f"{nem.name} is asking around about the drifter who scarred them."
             if "One Eye" in nem.scars:
                 rumor = f"One-Eyed {nem.name} swears vengeance on the player."
             world.rumors.append(rumor)
-            
-        # 3. Ambush Setup (Abstract)
-        # If they are in the same town as player, increase ambush chance?
-        # We can't easily access player location here without passing it.
-        # But we can set a flag on the NPC "hunting_player = True"
-        pass
