@@ -509,7 +509,11 @@ def visit_cantina(player, world):
             
         elif choice == "5":
             # Recruit Gang Member
-            if player.reputation < 20:
+            if not player.camp_established:
+                print("\nMercenary: 'You ain't got nowhere for us to hole up.'")
+                print("(You must establish a Camp first. Check 'Travel' menu.)")
+                wait_for_user(["Mercenary: 'Get a camp first.'"], player=player)
+            elif player.reputation < 20:
                 print("\nMercenary: 'I don't ride with nobodies. Come back when you have a name.'")
             elif player.cash < 10.00:
                 print("\nMercenary: 'I need $10.00 upfront, boss.'")
@@ -537,13 +541,12 @@ def visit_cantina(player, world):
                         
                         if not player.is_gang_leader:
                             print("\n!!! GANG FORMED !!!")
-                            print("You have started a gang. You can no longer sleep safely in towns.")
-                            print("You must now operate from a Wilderness Camp.")
+                            print("You have started a gang.")
                             player.is_gang_leader = True
-                            player.camp_established = True
-                            player.location = "Wilderness Camp" # Force move to camp
+                            # player.camp_established = True # Removed, must be done manually now
+                            # player.location = "Wilderness Camp" # Removed force move
                             time.sleep(2)
-                            return # Exit cantina loop to trigger main loop camp check
+                            # return # No longer need to exit loop immediately
                     else:
                         print("Not enough cash for that one.")
                 else:

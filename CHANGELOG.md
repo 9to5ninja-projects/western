@@ -363,6 +363,25 @@ All notable changes to this project will be documented in this file.
   - **Sheriff's Office**: Moved Sheriff and Patrol logic to `town_actions.py` and wired it to the GUI.
   - **Circular Dependencies**: Resolved import loops by moving `handle_blackout` to `combat_runner.py`.
 
+## [0.22.0] - 2025-11-23
+
+### Added
+- **Wilderness Camp System**:
+  - **Camp Hub**: A new persistent location accessible via the Travel menu.
+  - **Establishment**: Players can "Set up Camp" in the wilderness to create a base of operations.
+  - **Camp Stables**: Store multiple horses and swap your active mount.
+  - **Gang Management**: Pay daily wages to gang members to maintain morale.
+  - **Resting**: Free sleeping option at camp (heals less than a hotel but costs nothing).
+- **Crime System Refactor**:
+  - **Heist Planning**: Moved robbery logic to `crime_actions.py` to improve code organization.
+  - **Camp Integration**: Plan Bank, Stagecoach, and Train robberies directly from the camp menu.
+- **Recruitment Gating**:
+  - **Prerequisite**: Mercenaries in the Cantina now require an established camp before joining.
+
+### Changed
+- **Travel Menu**: Added "Set up Camp" option to the travel interface.
+- **Quit Handling**: Improved the quit confirmation dialog in the Camp menu.
+
 
 
 

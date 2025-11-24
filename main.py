@@ -14,6 +14,7 @@ from combat_runner import start_brawl, start_duel, loot_screen, handle_crime, pr
 from story_events import check_story_events
 from world_sim import generate_rival_gang, process_rival_gangs, update_world_simulation
 from town_actions import visit_mayor, bail_member, visit_cantina, visit_stables, visit_store, visit_sheriff
+from camp_actions import visit_camp
 
 # Initialize Visualizer
 # renderer = SceneRenderer() # Use global instance from visualizer.py
@@ -194,7 +195,12 @@ class GameController:
         else:
             renderer.load_scene("hotel_room"); renderer.render(log_text=["A simple room."]); sleep(self.player, self.world); self.state = "TOWN_HUB"
     def state_travel(self): renderer.load_scene("wilderness"); renderer.render(log_text=["Checking map..."]); travel_menu(self.player, self.world); self.state = "TOWN_HUB"
-    def state_camp(self): visit_camp(self.player, self.world); self.state = "TOWN_HUB"
+    def state_camp(self): 
+        action = visit_camp(self.player, self.world)
+        if action == "TRAVEL":
+            self.state = "TRAVEL"
+        else:
+            self.state = "TOWN_HUB"
     def state_mayor(self): renderer.load_scene("town_hall"); renderer.render(log_text=["Town Hall."]); visit_mayor(self.player, self.world); self.state = "TOWN_HUB"
     def state_bank(self): renderer.load_scene("bank_interior"); renderer.render(log_text=["The Bank."]); visit_bank(self.player, self.world); self.state = "TOWN_HUB"
 
@@ -298,6 +304,7 @@ def travel_menu(player, world):
             opts[str(i+1)] = f"{dest} ({dist} miles) - {method}: ~{weeks} Weeks"
             
         opts["B"] = "Back"
+        opts["C"] = "Set up Camp"
         
         # Render Travel Menu
         travel_buttons = []
@@ -309,6 +316,7 @@ def travel_menu(player, world):
             label = f"{dest} ({weeks}w)"
             travel_buttons.append({"label": label, "key": str(i+1)})
             
+        travel_buttons.append({"label": "Set up Camp", "key": "C"})
         travel_buttons.append({"label": "Back", "key": "B"})
         
         renderer.render(
@@ -318,6 +326,20 @@ def travel_menu(player, world):
         )
         
         choice = get_menu_choice(opts)
+        
+        if choice == "C":
+            if player.camp_established:
+                renderer.render(log_text=["You already have a camp."], player=player)
+                wait_for_user()
+            else:
+                name = renderer.get_text_input("Name your camp:", player=player)
+                if not name: name = "Wilderness Camp"
+                player.camp_name = name
+                player.camp_established = True
+                player.location = "Wilderness Camp"
+                renderer.render(log_text=[f"Camp '{name}' established."], player=player)
+                wait_for_user()
+                return # Exit travel menu, main loop will see location is Camp and switch state
         
         if choice == "B":
             break
@@ -616,306 +638,10 @@ def process_healing(player):
 
 
 
-def visit_camp(player, world):
-    while True:
-        render_hud(player, world)
-        print("\n=== WILDERNESS CAMP ===")
-        
-        # Gang Upkeep
-        # Wages based on skill/traits, reduced by Charm
-        total_wage = 0
-        print(f"Gang Members: {len(player.gang)}")
-        for m in player.gang:
-            base_wage = m.wage
-            # Charm Discount (10% per charm point, max 50%)
-            discount = min(0.5, player.charm * 0.1)
-            final_wage = base_wage * (1.0 - discount)
-            total_wage += final_wage
-            
-            traits = ", ".join(m.traits) if m.traits else "None"
-            print(f"- {m.name} ({m.archetype}) [{traits}] - Wage: ${final_wage:.2f}/day")
-            
-        print(f"Total Daily Upkeep: ${total_wage:.2f}")
-            
-        options = {
-            "1": "Rest by Campfire (Free, Slow Heal)",
-            "2": "Plan Heist",
-            "3": "Travel to Town",
-            "Q": "Quit Game"
-        }
-        
-        choice = get_menu_choice(options)
-        
-        if choice == "1":
-            print("\nYou sleep under the stars.")
-            
-            # Pay Upkeep
-            weekly_cost = total_wage * 7
-            if player.cash >= weekly_cost:
-                player.cash -= weekly_cost
-                print(f"Paid gang wages: ${weekly_cost:.2f}")
-            else:
-                print("You couldn't pay the gang fully. Morale is low.")
-                # Chance for members to leave?
-                if player.gang and random.random() < 0.3:
-                    leaver = player.gang.pop()
-                    print(f"{leaver.name} left the gang due to lack of pay!")
-            
-            world.week += 1
-            world.time_of_day = "Morning"
-            player.hp = min(player.max_hp, player.hp + 10) # Less healing than bed
-            player.blood = min(player.max_blood, player.blood + 1)
-            player.drunk_counter = 0 # Sober up
-            print("You feel rested, but your back aches.")
-            time.sleep(1)
-            
-        elif choice == "2":
-            plan_heist(player, world)
-            
-        elif choice == "3":
-            travel_menu(player, world)
-            if player.location != "Wilderness Camp": # If we traveled
-                break
-                
-        elif choice == "Q":
-            if input("Save before quitting? (Y/N): ").upper() == "Y":
-                save_game(player, world)
-            sys.exit()
-
-def plan_heist(player, world):
-    while True:
-        clear_screen()
-        print("\n=== CRIMINAL OPERATIONS ===")
-        print("1. Bank Robbery (Target Specific Town)")
-        print("2. Stagecoach Robbery (Req: 3+ Gang, Horses)")
-        print("3. Train Robbery (Req: 5+ Gang, Horses, Dynamite/Safecracker)")
-        print("B. Back")
-        
-        choice = input("Choice: ").upper()
-        
-        if choice == "1":
-            plan_bank_robbery(player, world)
-        elif choice == "2":
-            rob_stagecoach(player, world)
-        elif choice == "3":
-            rob_train(player, world)
-        elif choice == "B":
-            break
-
-def plan_bank_robbery(player, world):
-    print("\n=== BANK ROBBERY TARGETS ===")
-    
-    # Dynamic Targets based on Map
-    options = {}
-    targets = []
-    
-    # Find nearby towns
-    neighbors = world.map.get(world.town_name, {})
-    # For simplicity, let's list ALL towns but travel time applies
-    
-    i = 1
-    for t_name, t_data in world.towns.items():
-        if t_name == "Dusty Creek": continue # Too poor/tutorial
-        
-        risk = "Medium"
-        reward = "Medium"
-        if "Rich" in t_data.traits: reward = "High"
-        if "Poor" in t_data.traits: reward = "Low"
-        if "Fortified" in t_data.traits: risk = "Extreme"
-        if "Lawless" in t_data.traits: risk = "Low"
-        
-        options[str(i)] = f"Rob Bank in {t_name} ({risk} Risk, {reward} Reward)"
-        targets.append(t_name)
-        i += 1
-        
-    options["B"] = "Back"
-    
-    choice = get_menu_choice(options)
-    
-    if choice == "B":
-        return
-        
-    try:
-        idx = int(choice) - 1
-        if 0 <= idx < len(targets):
-            target_town = targets[idx]
-            print(f"\nRiding to {target_town} to rob the BANK!")
-            time.sleep(1)
-            player.location = target_town
-            world.town_name = target_town
-            rob_bank(player, world)
-    except:
+        # Remove local visit_camp definition if it exists, as we imported it
         pass
 
-def rob_stagecoach(player, world):
-    print("\n=== STAGECOACH ROBBERY ===")
-    if len(player.gang) < 3:
-        print("You need at least 3 gang members to stop a coach.")
-        time.sleep(1.5)
-        return
-    if not player.horse:
-        print("You need a horse to chase it down.")
-        time.sleep(1.5)
-        return
-        
-    print("You set up an ambush on the trade road...")
-    time.sleep(1)
-    
-    # Chance to find one
-    if random.random() < 0.7:
-        print("A Wells Fargo coach approaches!")
-        guards = [NPC("Cowboy") for _ in range(2)] # Shotgun messengers
-        print(f"Guards: {len(guards)}")
-        
-        if input("Attack? (Y/N): ").upper() == "Y":
-            player_team = [player] + player.gang
-            engine = ShootoutEngine(player_team, guards)
-            while True:
-                engine.render()
-                if not engine.run_turn(): break
-                time.sleep(1)
-            
-            process_gang_casualties(player, world)
-            
-            if player.alive and not any(g.alive for g in guards):
-                loot = random.randint(50, 150)
-                print(f"You pry open the strongbox: ${loot:.2f}")
-                player.cash += loot
-                player.honor -= 10
-                player.reputation += 5
-                world.add_heat(20)
-            else:
-                print("The coach escaped!")
-    else:
-        print("No coaches came by today.")
-    
-    time.sleep(2)
-
-def rob_train(player, world):
-    print("\n=== TRAIN ROBBERY ===")
-    if len(player.gang) < 5:
-        print("You need a large crew (5+) to take a train.")
-        time.sleep(1.5)
-        return
-    
-    has_expert = any("Safecracker" in m.traits for m in player.gang)
-    if not has_expert:
-        print("You need a Safecracker to open the armored car.")
-        time.sleep(1.5)
-        return
-
-    print("You ride alongside the Union Pacific Express!")
-    print("This will be a tough fight.")
-    
-    if input("Board the train? (Y/N): ").upper() == "Y":
-        # Train Guards are tough
-        guards = [NPC("Sheriff") for _ in range(2)] + [NPC("Cowboy") for _ in range(4)]
-        
-        player_team = [player] + player.gang
-        engine = ShootoutEngine(player_team, guards)
-        while True:
-            engine.render()
-            if not engine.run_turn(): break
-            time.sleep(1)
-            
-        process_gang_casualties(player, world)
-        
-        if player.alive and not any(g.alive for g in guards):
-            loot = random.randint(500, 1500)
-            print(f"The Safecracker blows the safe! LOOT: ${loot:.2f}")
-            player.cash += loot
-            player.honor -= 50
-            player.reputation += 50
-            world.add_heat(80)
-            player.bounty += 100
-        else:
-            print("You were thrown off the train!")
-            player.hp -= 20
-            
-    time.sleep(2)
-
-def rob_bank(player, world):
-    print("\n=== BANK ROBBERY ===")
-    town = world.get_town()
-    print(f"Target: {town.name}")
-    print(f"Town Traits: {', '.join(town.traits)}")
-    
-    print("You kick open the doors!")
-    
-    # Guards
-    base_guards = 2
-    if "Fortified" in town.traits: base_guards += 3
-    if "Lawless" in town.traits: base_guards -= 1
-    
-    guards = [NPC("Sheriff")] + [NPC("Cowboy") for _ in range(max(1, base_guards))]
-    
-    # Check for Rival Gang Control/Presence
-    rival_gang_present = False
-    for g in world.rival_gangs:
-        if g.active and g.hideout == town.name:
-            print(f"\nWARNING: This is {g.name} territory!")
-            print("They are guarding the bank too.")
-            rival_gang_present = True
-            # Add gang members to defenders
-            guards.extend(g.members[:3]) # Up to 3 members join the fight
-            break
-            
-    print(f"Guards: {len(guards)}")
-    
-    # Setup Teams
-    player_team = [player] + player.gang
-    enemy_team = guards
-    
-    print("A shootout erupts!")
-    input("Press Enter to fight...")
-    
-    engine = ShootoutEngine(player_team, enemy_team)
-    
-    # Run Shootout
-    while True:
-        engine.render()
-        cont = engine.run_turn()
-        time.sleep(1.5)
-        if not cont:
-            break
-            
-    engine.render()
-    
-    process_gang_casualties(player, world)
-    
-    # Check Outcome
-    enemies_alive = any(e.alive for e in guards)
-    
-    if player.alive and not enemies_alive:
-        base_loot = random.randint(100, 300)
-        if "Rich" in town.traits: base_loot *= 2
-        if "Poor" in town.traits: base_loot *= 0.5
-        
-        # Safecracker Bonus
-        safecrackers = sum(1 for m in player.gang if "Safecracker" in m.traits and m.alive)
-        if safecrackers > 0:
-            bonus = base_loot * (0.2 * safecrackers)
-            print(f"Safecracker bonus: +${bonus:.2f}")
-            base_loot += bonus
-            
-        print(f"\nSUCCESS! You loot ${base_loot:.2f} from the vault!")
-        player.cash += base_loot
-        world.add_heat(100) # Max heat
-        player.reputation += 50
-        player.honor -= 50
-        
-        # Escape back to camp
-        print("You ride off into the sunset before reinforcements arrive!")
-        player.location = "Wilderness Camp"
-        time.sleep(2)
-        
-    elif player.alive and enemies_alive:
-        print("\nYou were forced to flee!")
-        player.location = "Wilderness Camp"
-        time.sleep(2)
-        
-    else:
-        print("\nYou died in the shootout.")
+# Robbery functions moved to crime_actions.py
 
 def visit_bank(player, world):
     while True:
