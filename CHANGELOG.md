@@ -423,6 +423,17 @@ All notable changes to this project will be documented in this file.
   - **Efficient Action Bar**: The combat GUI now only displays relevant actions (e.g., "DRAW" is hidden if weapon is drawn, "RELOAD" appears only when ammo is low).
   - **Button Optimization**: Consolidated combat actions to fit within the 10-button limit while maintaining full tactical depth.
 
+## [0.28.0] - 2025-11-24
+
+### Added
+- **Combat Movement Freedom**:
+  - **Absolute Movement**: Players can now move past the center of the arena using "Step Left" and "Step Right" actions, allowing for side-switching and deeper tactical positioning.
+- **Ammo Economy**:
+  - **Finite Ammo**: Combatants now have a `reserve_ammo` pool separate from their weapon's cylinder.
+  - **Reloading**: Reloading now consumes rounds from the reserve.
+  - **NPC Limits**: NPCs spawn with randomized, finite ammo reserves (0-18 rounds) and can run out during prolonged fights.
+  - **Store Integration**: Players must purchase ammo packs from the General Store to replenish their reserve.
+
 ## [0.26.0] - 2025-11-24
 
 ### Fixed

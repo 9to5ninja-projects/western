@@ -25,6 +25,8 @@ class Orientation(Enum):
 class Action(Enum):
     PACE = "pace"           # Move 1 away from center
     STEP_IN = "step_in"     # Move 1 toward center
+    STEP_LEFT = "step_left" # Absolute movement
+    STEP_RIGHT = "step_right" # Absolute movement
     FLEE = "flee"           # Move 2 away from center (if > 13)
     TURN = "turn"           # Toggle orientation
     DRAW = "draw"           # Holstered -> Drawn
@@ -62,8 +64,8 @@ class Combatant:
             self.brawl_def = player_state.brawl_def
             self.acc = player_state.get_acc()
             self.luck = player_state.luck_base
-            self.ammo = 6 # Cylinder capacity, not total ammo
-            # TODO: Load from inventory?
+            self.ammo = 6 # Cylinder capacity
+            self.reserve_ammo = player_state.ammo # Loose rounds
         else:
             # Default/NPC stats
             self.blood = 12
@@ -75,6 +77,7 @@ class Combatant:
             self.acc = 30
             self.luck = 30
             self.ammo = 6
+            self.reserve_ammo = random.randint(0, 18) # NPCs have limited ammo too
 
         self.bleeding_rate = 0
         self.conscious = True
@@ -117,6 +120,7 @@ class Combatant:
             self.player_state.blood = self.blood
             self.player_state.alive = self.alive
             self.player_state.conscious = self.conscious
+            self.player_state.ammo = self.reserve_ammo # Sync ammo back
             
             # Sync injuries
             for inj in self.injuries:
@@ -143,7 +147,7 @@ class Combatant:
             status += f" (Bleeding -{self.bleeding_rate}/turn)"
         status += f"\n  Brawl: Atk {self.brawl_atk} / Def {self.brawl_def}"
         status += f"\n  Pos: {self.position} | Facing: {self.orientation.value}"
-        status += f"\n  Weapon: {self.weapon_state.value.upper()} | Ammo: {self.ammo}/6"
+        status += f"\n  Weapon: {self.weapon_state.value.upper()} | Ammo: {self.ammo}/6 ({self.reserve_ammo})"
         status += f"\n  Stance: {'DUCKING' if self.is_ducking else 'STANDING'}"
         if self.blinded > 0:
             status += f"\n  BLINDED ({self.blinded} eyes lost)"
@@ -409,7 +413,21 @@ class DuelEngineV2:
         actor.is_jumping = False
         
         # Movement
-        if action == Action.PACE:
+        if action == Action.STEP_LEFT:
+            if actor.position > -15:
+                actor.position -= 1
+                msgs.append(f"{actor.name} steps left to {actor.position}.")
+            else:
+                msgs.append(f"{actor.name} hits the edge of the arena.")
+
+        elif action == Action.STEP_RIGHT:
+            if actor.position < 15:
+                actor.position += 1
+                msgs.append(f"{actor.name} steps right to {actor.position}.")
+            else:
+                msgs.append(f"{actor.name} hits the edge of the arena.")
+
+        elif action == Action.PACE:
             # Move away from center
             if actor.position == 0:
                 actor.position += actor.direction_multiplier
@@ -468,8 +486,16 @@ class DuelEngineV2:
 
         elif action == Action.RELOAD:
             if actor.ammo < 6:
-                actor.ammo += 1
-                msgs.append(f"{actor.name} loads a round. (Ammo: {actor.ammo}/6)")
+                if actor.reserve_ammo > 0:
+                    needed = 6 - actor.ammo
+                    loaded = min(needed, actor.reserve_ammo)
+                    actor.ammo += loaded
+                    actor.reserve_ammo -= loaded
+                    msgs.append(f"{actor.name} loads {loaded} rounds. (Ammo: {actor.ammo}/6)")
+                else:
+                    msgs.append(f"{actor.name} pats their pockets... out of ammo!")
+            else:
+                msgs.append(f"{actor.name} cylinder is already full.")
 
         elif action == Action.DUCK:
             actor.is_ducking = True
@@ -712,7 +738,7 @@ class DuelEngineV2:
         print("\n" + "-"*60)
         print(f"{self.p1.name:<30} | {self.p2.name:<30}")
         print(f"HP: {self.p1.hp:<3}/{self.p1.max_hp:<3} Blood: {self.p1.blood:<2}      | HP: {self.p2.hp:<3}/{self.p2.max_hp:<3} Blood: {self.p2.blood:<2}")
-        print(f"Wpn: {self.p1.weapon_state.value:<10} Ammo: {self.p1.ammo}      | Wpn: {self.p2.weapon_state.value:<10} Ammo: {self.p2.ammo}")
+        print(f"Wpn: {self.p1.weapon_state.value:<10} Ammo: {self.p1.ammo} ({self.p1.reserve_ammo})      | Wpn: {self.p2.weapon_state.value:<10} Ammo: {self.p2.ammo}")
         print("-" * 60)
         
         # Print Log

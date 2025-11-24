@@ -364,14 +364,12 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             duel_buttons.append({"label": "TURN LEFT", "key": "1"})
             
             # 2 (Right) -> Step Right
-            if p1.direction_multiplier == -1: action_2 = Action.STEP_IN # Toward Center
-            else: action_2 = Action.PACE # Away Center
+            action_2 = Action.STEP_RIGHT
             duel_buttons.append({"label": "STEP RIGHT", "key": "2"})
         else:
             # Facing Left (<)
             # 1 (Left) -> Step Left
-            if p1.direction_multiplier == -1: action_1 = Action.PACE # Away Center
-            else: action_1 = Action.STEP_IN # Toward Center
+            action_1 = Action.STEP_LEFT
             duel_buttons.append({"label": "STEP LEFT", "key": "1"})
             
             # 2 (Right) -> Turn Right
@@ -428,7 +426,7 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         
         # Visual Ammo
         ammo_p1 = "|" * p1.ammo + "." * (6 - p1.ammo)
-        stats_text.append(f"Ammo: [{ammo_p1}]")
+        stats_text.append(f"Ammo: [{ammo_p1}] ({p1.reserve_ammo})")
         
         stats_text.append(f"Pos: {p1.position}")
         
