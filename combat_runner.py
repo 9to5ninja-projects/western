@@ -480,8 +480,23 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         print("\nVICTORY!")
         
         log_lines = final_log + ["", "VICTORY!"]
-        if npc: npc.alive = False # Mark NPC as dead
         
+        # Nemesis Check: Did they survive?
+        survived = False
+        if npc and not (is_sheriff or npc.archetype == "Sheriff"):
+            # Chance to survive if not "Obliterated" (HP > -20)
+            if p2.hp > -20 and random.random() < 0.4: # 40% chance
+                survived = True
+                npc.alive = True
+                npc.hp = 10 # Barely alive
+                npc.add_scar(random.choice(["Ugly Scar", "Limp", "One Eye", "Broken Hand"]))
+                npc.add_memory("Player defeated me in a duel", -50)
+                log_lines.append("You leave them for dead...")
+            else:
+                npc.alive = False # Confirmed kill
+        else:
+            if npc: npc.alive = False
+
         if is_sheriff or npc.archetype == "Sheriff":
             print("YOU KILLED THE SHERIFF! You are now a WANTED MAN.")
             log_lines.append("YOU KILLED THE SHERIFF!")
@@ -496,13 +511,16 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         player.duel_wins += 1
         wait_for_user(log_lines, player=player)
             
-        if not (is_sheriff or npc.archetype == "Sheriff"):
+        if not (is_sheriff or npc.archetype == "Sheriff") and not survived:
             renderer.render(
                 log_text=["Loot them? (Y/N)"],
                 buttons=[{"label": "Loot", "key": "Y"}, {"label": "Leave", "key": "N"}]
             )
             if renderer.get_input() == "Y":
                 loot_screen(player, world, npc)
+        elif survived:
+            # Can't loot if they crawled away or you left them
+            pass
 
     elif not p1.alive:
         print("\nDEFEAT.")

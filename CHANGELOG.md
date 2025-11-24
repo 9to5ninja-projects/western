@@ -382,6 +382,17 @@ All notable changes to this project will be documented in this file.
 - **Travel Menu**: Added "Set up Camp" option to the travel interface.
 - **Quit Handling**: Improved the quit confirmation dialog in the Camp menu.
 
+## [0.23.0] - 2025-11-24
+
+### Added
+- **Nemesis System (Phase 10)**:
+  - **Persistent Memories**: NPCs now remember significant interactions with the player (e.g., "Player defeated me in a duel").
+  - **Survival Mechanics**: Defeated NPCs have a chance to survive with 10 HP if not obliterated (HP > -20).
+  - **Scars**: Survivors gain permanent scars (e.g., "One Eye", "Limp") that affect their stats and appearance.
+  - **Vendettas**: NPCs with negative relationships (< -50) become Nemeses and actively hunt the player.
+  - **Rumors**: Nemeses generate threatening rumors in the world simulation.
+  - **Dialogue**: Nemeses have unique dialogue lines referencing their past defeat.
+
 
 
 

@@ -162,6 +162,32 @@ class NPC:
             origin = random.choice(["Dusty Creek", "Shinbone", "Brimstone", "Silver Hollow"])
             receipt = Item(f"Bank Draft (${amount})", ItemType.RECEIPT, amount, {"origin": origin})
             self.inventory.append(receipt)
+            
+        # Nemesis System
+        self.relationships = {} # { "Player": -50, "Sheriff Bob": 20 }
+        self.memories = [] # ["Player shot me in the leg", "Player robbed me"]
+        self.scars = [] # ["One Eye", "Limp"]
+        self.is_nemesis = False
+        self.vendetta_target = None # Name of target
 
     def get_line(self):
+        if self.is_nemesis and self.vendetta_target == "Player":
+            return f"Remember me? {self.memories[-1] if self.memories else 'You ruined me!'}"
         return f"{random.choice(self.lines)} [{self.quirk}]"
+
+    def add_memory(self, event, impact):
+        self.memories.append(event)
+        current_rel = self.relationships.get("Player", 0)
+        self.relationships["Player"] = current_rel + impact
+        
+        if self.relationships["Player"] < -50:
+            self.is_nemesis = True
+            self.vendetta_target = "Player"
+            
+    def add_scar(self, scar_name):
+        self.scars.append(scar_name)
+        # Apply Scar Effects
+        if "One Eye" in scar_name: self.acc -= 20
+        if "Limp" in scar_name: self.spd -= 20
+        if "Broken Hand" in scar_name: self.brawl_atk -= 5
+        if "Ugly Scar" in scar_name: self.quirk = "Touches face scar constantly"

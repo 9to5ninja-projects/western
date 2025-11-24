@@ -12,7 +12,7 @@ from visualizer import renderer, Actor
 from game_utils import wait_for_user, options_to_buttons
 from combat_runner import start_brawl, start_duel, loot_screen, handle_crime, process_gang_casualties
 from story_events import check_story_events
-from world_sim import generate_rival_gang, process_rival_gangs, update_world_simulation
+from world_sim import generate_rival_gang, process_rival_gangs, update_world_simulation, process_nemesis_system
 from town_actions import visit_mayor, bail_member, visit_cantina, visit_stables, visit_store, visit_sheriff
 from camp_actions import visit_camp
 

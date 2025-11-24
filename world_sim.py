@@ -138,3 +138,43 @@ def update_world_simulation(world):
     
     # 4. Rival Gangs
     process_rival_gangs(world)
+    
+    # 5. Nemesis System
+    process_nemesis_system(world)
+
+def process_nemesis_system(world):
+    # Find all active NPCs who are Nemeses
+    nemeses = []
+    
+    # Check Active NPCs
+    for npc in world.active_npcs:
+        if npc.alive and npc.is_nemesis and npc.vendetta_target == "Player":
+            nemeses.append(npc)
+            
+    # Check Gang Leaders/Members
+    for gang in world.rival_gangs:
+        if not gang.active: continue
+        if gang.leader.alive and gang.leader.is_nemesis:
+            nemeses.append(gang.leader)
+        for m in gang.members:
+            if m.alive and m.is_nemesis:
+                nemeses.append(m)
+                
+    # Process Actions
+    for nem in nemeses:
+        # 1. Hunt Player
+        # If player location is known (e.g. Town Hub), move towards it?
+        # For now, just random movement but with higher aggression
+        
+        # 2. Generate Threatening Rumor
+        if random.random() < 0.5:
+            rumor = f"{nem.name} is asking around about the drifter who scarred them."
+            if "One Eye" in nem.scars:
+                rumor = f"One-Eyed {nem.name} swears vengeance on the player."
+            world.rumors.append(rumor)
+            
+        # 3. Ambush Setup (Abstract)
+        # If they are in the same town as player, increase ambush chance?
+        # We can't easily access player location here without passing it.
+        # But we can set a flag on the NPC "hunting_player = True"
+        pass
