@@ -48,6 +48,7 @@ class Action(Enum):
     BLOCK = "block"         # Blocks Jab, loses to Hook
     SURRENDER = "surrender"
     WAIT = "wait"
+    COUNTER = "counter"     # Block > Jab counter-attack
 
 class Combatant:
     def __init__(self, name, direction_multiplier, player_state=None, source_obj=None):
@@ -309,7 +310,7 @@ class DuelEngineV2:
                     
         return hit_part, damage_blood, msg
 
-    def resolve_punch(self, attacker, defender, punch_type=Action.PUNCH):
+    def resolve_punch(self, attacker, defender, punch_type=Action.PUNCH, is_counter=False):
         # Determine Hand Used
         hand_used = attacker.dominant_hand
         off_hand = BodyPart.ARM_L if attacker.dominant_hand == BodyPart.ARM_R else BodyPart.ARM_R
@@ -350,6 +351,10 @@ class DuelEngineV2:
             acc_mod = -10 # Wild
             dmg_mod = 5 # Strong
             
+        if is_counter:
+            acc_mod += 50 # Counter is very accurate
+            dmg_mod += 5 # And hits harder due to momentum
+            
         # Hit chance modified by Atk vs Def
         hit_chance = 60 + (attacker.luck - 50)/2 + (attacker.brawl_atk - defender.brawl_def) + acc_mod
         
@@ -360,7 +365,9 @@ class DuelEngineV2:
             total_dmg = base_dmg + dmg_bonus + dmg_mod
             
             defender.hp -= total_dmg
-            msg = f"{attacker.name} {punch_type.value}s {defender.name} for {total_dmg} HP!"
+            
+            prefix = "COUNTER! " if is_counter else ""
+            msg = f"{prefix}{attacker.name} {punch_type.value}s {defender.name} for {total_dmg} HP!"
             
             # Self-Injury (Broken Hand)
             if random.random() < 0.02: # 2% chance
@@ -568,6 +575,10 @@ class DuelEngineV2:
             res = self.resolve_punch(actor, target, Action.HOOK)
             msgs.append(res)
 
+        elif action == Action.COUNTER:
+            res = self.resolve_punch(actor, target, Action.JAB, is_counter=True)
+            msgs.append(res)
+
         elif action == Action.BLOCK:
             msgs.append(f"{actor.name} raises their guard.")
 
@@ -615,11 +626,11 @@ class DuelEngineV2:
         elif a1 == Action.BLOCK and a2 == Action.JAB:
             self.log.append(f"BLOCK stops JAB! {self.p1.name} counters!")
             p2_override = Action.WAIT # Jab blocked
-            p1_override = Action.JAB # Counter-attack
+            p1_override = Action.COUNTER # Counter-attack
         elif a2 == Action.BLOCK and a1 == Action.JAB:
             self.log.append(f"BLOCK stops JAB! {self.p2.name} counters!")
             p1_override = Action.WAIT
-            p2_override = Action.JAB
+            p2_override = Action.COUNTER
 
         # Execute
         final_a1 = p1_override if p1_override else a1

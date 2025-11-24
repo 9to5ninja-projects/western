@@ -434,6 +434,16 @@ All notable changes to this project will be documented in this file.
   - **NPC Limits**: NPCs spawn with randomized, finite ammo reserves (0-18 rounds) and can run out during prolonged fights.
   - **Store Integration**: Players must purchase ammo packs from the General Store to replenish their reserve.
 
+## [0.29.0] - 2025-11-24
+
+### Added
+- **Brawl System Overhaul**:
+  - **Surrender Option**: Players can now surrender during a brawl to avoid further damage (at the cost of cash/rep).
+  - **AI Surrender**: Opponents with low HP (< 20%) now have a chance to surrender, allowing the player to "Finish Him" or "Accept Surrender".
+  - **Counter-Attack Mechanic**: The "Block > Jab" interaction has been upgraded to a dedicated `COUNTER` action.
+    - **Effect**: A successful block now triggers a guaranteed, high-damage counter-attack instead of a weak jab.
+    - **Feedback**: Combat logs now clearly state "PERFECT COUNTER!" to highlight the tactical win.
+
 ## [0.26.0] - 2025-11-24
 
 ### Fixed

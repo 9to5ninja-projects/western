@@ -186,10 +186,32 @@ def start_brawl(player, world, npc=None):
     while p1.conscious and p2.conscious and p1.alive and p2.alive:
         renderer.render_duel_state(engine, p1, p2)
         
+        # Check if opponent surrendered in PREVIOUS turn
+        if p2.is_surrendering:
+            surrender_buttons = [
+                {"label": "Accept Surrender", "key": "1"},
+                {"label": "Finish Him!", "key": "2"}
+            ]
+            renderer.render(
+                log_text=[f"{p2.name} is asking for mercy!", "Choose fate..."],
+                buttons=surrender_buttons
+            )
+            
+            sub = renderer.get_input()
+            if sub == "1":
+                wait_for_user(["You step back.", "Fight over."], player=player)
+                p2.conscious = False # End loop gracefully
+                break
+            elif sub == "2":
+                wait_for_user(["You ignore their plea."], player=player)
+                p2.is_surrendering = False # They fight on!
+                player.honor -= 5
+
         brawl_buttons = [
             {"label": "JAB (Fast)", "key": "1"},
             {"label": "HOOK (Strong)", "key": "2"},
-            {"label": "BLOCK", "key": "3"}
+            {"label": "BLOCK", "key": "3"},
+            {"label": "SURRENDER", "key": "4"}
         ]
         
         renderer.render(
@@ -203,15 +225,40 @@ def start_brawl(player, world, npc=None):
         if act == "1": p1_act = Action.JAB
         elif act == "2": p1_act = Action.HOOK
         elif act == "3": p1_act = Action.BLOCK
+        elif act == "4": p1_act = Action.SURRENDER
         else: p1_act = Action.WAIT
         
         # AI Action
-        roll = random.random()
-        if roll < 0.33: p2_act = Action.JAB
-        elif roll < 0.66: p2_act = Action.HOOK
-        else: p2_act = Action.BLOCK
+        # Simple AI: If HP < 20%, 50% chance to surrender
+        p2_act = Action.WAIT
+        if p2.hp < p2.max_hp * 0.2 and random.random() < 0.5:
+            p2_act = Action.SURRENDER
+        else:
+            # RPS Logic
+            roll = random.random()
+            if roll < 0.33: p2_act = Action.JAB
+            elif roll < 0.66: p2_act = Action.HOOK
+            else: p2_act = Action.BLOCK
         
         engine.run_turn(p1_act, p2_act)
+        
+        # Check Player Surrender
+        if p1.is_surrendering and p2_act != Action.SURRENDER:
+            # AI accepts?
+            if random.random() < 0.8:
+                print(f"\n{p2.name} accepts your surrender.")
+                wait_for_user([f"{p2.name} accepts your surrender."], player=player)
+                p1.conscious = False # End loop
+                
+                # Consequences
+                loss = random.randint(5, 10)
+                player.cash = max(0, player.cash - loss)
+                player.reputation = max(0, player.reputation - 5)
+                print(f"They took ${loss} from you.")
+                break
+            else:
+                wait_for_user([f"{p2.name} laughs and keeps hitting you!"], player=player)
+                p1.is_surrendering = False
         
     renderer.render_duel_state(engine, p1, p2)
     p1.sync_state() # Save HP loss back to player
