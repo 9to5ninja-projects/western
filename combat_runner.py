@@ -205,14 +205,16 @@ def start_brawl(player, world, npc=None):
             elif sub == "2":
                 wait_for_user(["You ignore their plea."], player=player)
                 p2.is_surrendering = False # They fight on!
+                p2.surrender_refused = True
                 player.honor -= 5
 
         brawl_buttons = [
             {"label": "JAB (Fast)", "key": "1"},
             {"label": "HOOK (Strong)", "key": "2"},
-            {"label": "BLOCK", "key": "3"},
-            {"label": "SURRENDER", "key": "4"}
+            {"label": "BLOCK", "key": "3"}
         ]
+        if not p1.surrender_refused:
+            brawl_buttons.append({"label": "SURRENDER", "key": "4"})
         
         renderer.render(
             stats_text=[f"{p1.name}: {p1.hp}/{p1.max_hp}", f"{p2.name}: {p2.hp}/{p2.max_hp}"],
@@ -231,7 +233,7 @@ def start_brawl(player, world, npc=None):
         # AI Action
         # Simple AI: If HP < 20%, 50% chance to surrender
         p2_act = Action.WAIT
-        if p2.hp < p2.max_hp * 0.2 and random.random() < 0.5:
+        if p2.hp < p2.max_hp * 0.2 and random.random() < 0.5 and not p2.surrender_refused:
             p2_act = Action.SURRENDER
         else:
             # RPS Logic
@@ -244,21 +246,26 @@ def start_brawl(player, world, npc=None):
         
         # Check Player Surrender
         if p1.is_surrendering and p2_act != Action.SURRENDER:
+            if not p1.conscious:
+                break # Player was KO'd while trying to surrender
+
             # AI accepts?
             if random.random() < 0.8:
                 print(f"\n{p2.name} accepts your surrender.")
                 wait_for_user([f"{p2.name} accepts your surrender."], player=player)
-                p1.conscious = False # End loop
                 
                 # Consequences
                 loss = random.randint(5, 10)
                 player.cash = max(0, player.cash - loss)
                 player.reputation = max(0, player.reputation - 5)
                 print(f"They took ${loss} from you.")
-                break
+                
+                p1.sync_state()
+                return True
             else:
                 wait_for_user([f"{p2.name} laughs and keeps hitting you!"], player=player)
                 p1.is_surrendering = False
+                p1.surrender_refused = True
         
     renderer.render_duel_state(engine, p1, p2)
     p1.sync_state() # Save HP loss back to player
@@ -403,7 +410,8 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             elif sub == "3":
                 wait_for_user(["You ignore their plea."], player=player)
                 player.honor -= 5
-                # Continue to action selection
+                p2.is_surrendering = False # They fight on!
+                p2.surrender_refused = True
         
         # --- DYNAMIC BUTTON LOGIC ---
         duel_buttons = []
@@ -467,7 +475,8 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             duel_buttons.append({"label": "KICK SAND", "key": "K"})
             
         # 7. Surrender (Key 9)
-        duel_buttons.append({"label": "SURRENDER", "key": "9"})
+        if not p1.surrender_refused:
+            duel_buttons.append({"label": "SURRENDER", "key": "9"})
         
         # Contextual Fire Actions (Duck/Stand Fire) - Optional if space permits
         # We have used: 1, 2, 3/7, 4, 5, 6, 8, J, P/K, 9 = 10 buttons max.
@@ -544,13 +553,16 @@ def start_duel(player, world, npc=None, is_sheriff=False):
         # AI (Cheater or Honorable?)
         p2_act = ai_honorable(p2, p1, engine)
         
+        was_surrendering = p1.is_surrendering
         engine.run_turn(p1_act, p2_act)
         
         # Check if Player Surrendered and AI Accepted
         if p1.is_surrendering and p2_act == Action.WAIT:
+            if not p1.conscious:
+                break
+
             print(f"\n{p2.name} accepts your surrender.")
             wait_for_user([f"{p2.name} accepts your surrender."], player=player)
-            p1.conscious = False # End loop
             
             # Memory: Player surrendered
             npc.add_memory("Player surrendered to me", 20)
@@ -561,8 +573,16 @@ def start_duel(player, world, npc=None, is_sheriff=False):
             loss = random.randint(5, 15)
             player.cash = max(0, player.cash - loss)
             print(f"They took ${loss} from you.")
-            break
             
+            p1.sync_state()
+            return
+            
+        # Check if AI Refused (Attacked while player was surrendering)
+        if was_surrendering and p2_act != Action.WAIT:
+             p1.is_surrendering = False
+             p1.surrender_refused = True
+             wait_for_user([f"{p2.name} refuses your surrender!"], player=player)
+
         if not p1.conscious:
             break
         

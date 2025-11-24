@@ -113,6 +113,7 @@ class Combatant:
              self.dominant_hand = BodyPart.ARM_R if player_state.dominant_hand == "right" else BodyPart.ARM_L
         
         self.is_surrendering = False 
+        self.surrender_refused = False
 
     def sync_state(self):
         """Syncs combat damage back to persistent player state"""
@@ -409,11 +410,11 @@ class DuelEngineV2:
         else:
             return f"{attacker.name} swings and misses!"
 
-    def execute_action(self, actor, action, target):
+    def execute_action(self, actor, action, target, ignore_status=False):
         msgs = []
         
         # Status Checks
-        if not actor.conscious or not actor.alive:
+        if not ignore_status and (not actor.conscious or not actor.alive):
             return []
             
         # Reset temp states
@@ -588,6 +589,7 @@ class DuelEngineV2:
             msgs.append(f"{actor.name} raises their hands! 'I YIELD!'")
 
         elif action == Action.STEP_IN:
+            actor.is_surrendering = False # Break surrender if moving aggressively?
             # Move toward center
             if actor.position > 0:
                 actor.position -= 1
@@ -639,23 +641,33 @@ class DuelEngineV2:
             p2_override = Action.WAIT
             
         elif a1 == Action.HOOK and a2 == Action.HOOK:
-            self.log.append("TRADING BLOWS! Both hooks connect!")
+            self.log.append("TRADING BLOWS! Both fighters throw heavy hooks!")
             # Allow both to execute normally
             
         # Execute
         final_a1 = p1_override if p1_override else a1
         final_a2 = p2_override if p2_override else a2
         
-        # Randomize execution order to allow for Double KOs
-        if random.random() < 0.5:
-            msgs1 = self.execute_action(self.p1, final_a1, self.p2)
-            msgs2 = self.execute_action(self.p2, final_a2, self.p1)
+        # Check for Simultaneous Execution (Trading Blows)
+        simultaneous = (a1 == Action.HOOK and a2 == Action.HOOK)
+
+        if simultaneous:
+             # Both execute regardless of outcome of the other
+             msgs1 = self.execute_action(self.p1, final_a1, self.p2, ignore_status=True)
+             msgs2 = self.execute_action(self.p2, final_a2, self.p1, ignore_status=True)
+             self.log.extend(msgs1)
+             self.log.extend(msgs2)
         else:
-            msgs2 = self.execute_action(self.p2, final_a2, self.p1)
-            msgs1 = self.execute_action(self.p1, final_a1, self.p2)
-        
-        self.log.extend(msgs1)
-        self.log.extend(msgs2)
+            # Randomize execution order
+            if random.random() < 0.5:
+                msgs1 = self.execute_action(self.p1, final_a1, self.p2)
+                msgs2 = self.execute_action(self.p2, final_a2, self.p1)
+            else:
+                msgs2 = self.execute_action(self.p2, final_a2, self.p1)
+                msgs1 = self.execute_action(self.p1, final_a1, self.p2)
+            
+            self.log.extend(msgs1)
+            self.log.extend(msgs2)
         
         # End of Turn Effects
         for p in [self.p1, self.p2]:
@@ -815,7 +827,7 @@ def ai_honorable(me, opp, engine):
 
     # Self Preservation (Surrender?)
     if me.hp < me.max_hp * 0.2 or (me.weapon_state == WeaponState.DROPPED and opp.weapon_state == WeaponState.DRAWN):
-        if random.random() < 0.7: # Honorable people know when they are beat
+        if random.random() < 0.7 and not me.surrender_refused: # Honorable people know when they are beat
             return Action.SURRENDER
 
     # Pace to 10, Turn, Draw, Shoot
@@ -836,7 +848,7 @@ def ai_cheater(me, opp, engine):
 
     # Self Preservation
     if me.hp < me.max_hp * 0.15:
-        if random.random() < 0.3: # Cheaters are stubborn or cowardly?
+        if random.random() < 0.3 and not me.surrender_refused: # Cheaters are stubborn or cowardly?
             return Action.SURRENDER
 
     # Turn immediately, Draw, Shoot

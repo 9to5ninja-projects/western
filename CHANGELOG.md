@@ -468,6 +468,19 @@ All notable changes to this project will be documented in this file.
 - **Code Architecture**:
   - **Combatant Source**: `Combatant` objects now retain a reference to their source `NPC` or `Player` object, allowing the visualizer to access deep lore/stats during combat.
 
+## [0.30.0] - 2025-11-24
+
+### Added
+- **Surrender Mechanics Refinement**:
+  - **Surrender Refusal**:
+    - **One Chance**: If a surrender attempt is rejected (by attacking the surrendering party), the option to surrender is permanently removed for that fight.
+    - **AI Memory**: AI opponents will remember if their surrender was refused and fight to the death.
+  - **Safety Fixes**:
+    - **False KO**: Fixed a bug where surrendering players could be "Knocked Out" even if the opponent missed their final attack.
+    - **Clean Exit**: Surrendering now correctly exits the combat loop without triggering defeat conditions unless actual lethal damage was taken.
+- **Combat Logic**:
+  - **Simultaneous Execution**: "Trading Blows" (Hook vs Hook) now forces both attacks to execute, ensuring Double KOs are mechanically possible.
+
 
 
 
